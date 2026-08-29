@@ -1,0 +1,30 @@
+"""Analytics API router."""
+
+import uuid
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
+from sqlalchemy.orm import Session
+
+from app.core.database import get_db
+from app.schemas.analytics import EventAnalytics
+from app.services import analytics_service
+
+router = APIRouter(tags=["Analytics"])
+
+DbDep = Annotated[Session, Depends(get_db)]
+
+
+@router.get(
+    "/events/{event_id}/analytics",
+    response_model=EventAnalytics,
+    summary="Get event analytics",
+)
+def get_analytics(event_id: uuid.UUID, db: DbDep):
+    """
+    Return comprehensive event analytics derived from existing data.
+
+    Includes registration, attendance, team, submission, judging,
+    score distribution, and engagement metrics.
+    """
+    return analytics_service.get_event_analytics(db, event_id)

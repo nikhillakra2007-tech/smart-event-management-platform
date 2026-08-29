@@ -1,0 +1,50 @@
+"""Smart Event Management Platform — FastAPI application entry point."""
+
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from app.core.config import settings
+from app.core.database import check_db_connection
+from app.api.router import api_router
+
+app = FastAPI(
+    title=settings.app_title,
+    description=settings.app_description,
+    version=settings.app_version,
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
+
+# CORS — permissive for development; restrict in production
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Mount all API routers under /api prefix
+app.include_router(api_router, prefix=settings.api_prefix)
+
+
+@app.get("/", tags=["Health"])
+def root():
+    """Root health check."""
+    return {
+        "service": settings.app_title,
+        "version": settings.app_version,
+        "status": "running",
+        "docs": "/docs",
+    }
+
+
+@app.get("/health", tags=["Health"])
+def health():
+    """Health check including database connectivity."""
+    db_ok = check_db_connection()
+    return {
+        "status": "healthy" if db_ok else "degraded",
+        "database": "connected" if db_ok else "disconnected",
+        "version": settings.app_version,
+    }
