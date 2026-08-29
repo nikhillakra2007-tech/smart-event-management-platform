@@ -1,205 +1,153 @@
-# Smart Event Management Platform — Implementation Plan
+# Smart Event Management Platform — Implementation Plan (Frontend & Full-Stack Integration)
 
 ## Architecture Overview
 
 ```
-Frontend (future phase)
-       |
-       v
-FastAPI REST API  (backend/app/main.py + api/ routers)
-       |
-       v
-Service Layer     (backend/app/services/)
-       |
-       v
-SQLAlchemy ORM    (backend/app/models/)
-       |
-       v
-PostgreSQL        (via psycopg3 async-compatible sync driver)
-       |
-       v
-Realtime-ready    (data immediately queryable; SSE/WS in next phase)
+                          REACT + VITE + TYPESCRIPT FRONTEND (Port 5173)
+                   ┌─────────────────────────────────────────────────────────┐
+                   │  App Shell: Sidebar, Topbar, Role Switcher, Event Bar   │
+                   ├─────────────────┬───────────────────┬───────────────────┤
+                   │ Organizer Views │ Participant Views │    Judge Views    │
+                   │ • Command Center│ • My Pass / QR    │ • Judge Portal    │
+                   │ • QR Monitor    │ • Team Discovery  │ • Rubric Evaluator│
+                   │ • Announcements │ • My Team         │ • Scoring History │
+                   │ • Leaderboard   │ • Submission      │ • Live Rankings   │
+                   │ • Deep Analytics│ • Broadcasts Feed │                   │
+                   └─────────────────┴───────────────────┴───────────────────┘
+                                              │
+                                   Centralized API Client
+                                  (Axios / Typed Fetch API)
+                                              │
+                                              ▼
+                               FASTAPI BACKEND (Port 8000)
+                   ┌─────────────────────────────────────────────────────────┐
+                   │ Routers: /events, /registrations, /checkins, /teams,    │
+                   │          /submissions, /judging, /announcements,        │
+                   │          /leaderboard, /analytics, /users               │
+                   └──────────────────────────┬──────────────────────────────┘
+                                              │
+                                        SQLAlchemy ORM
+                                              │
+                                              ▼
+                                   POSTGRESQL 18 DATABASE
+                                (15 Tables + Leaderboard VIEW)
 ```
 
-## Key Technical Decisions
+---
 
-| Decision | Choice | Rationale |
-|----------|--------|-----------|
-| Primary keys | UUID (uuid.uuid4) | Globally unique, no collision |
-| Array fields | PostgreSQL ARRAY(String) | Native array for skills/roles/interests |
-| Leaderboard | SQL VIEW + aggregation | Always reflects live evaluation data |
-| Analytics | Query-time aggregation | No redundant tables |
-| Team discovery | Scoring function | Set intersection on skills/interests/roles |
-| QR token | UUID string in registration | No image library required |
-| Migrations | Alembic autogenerate | Track every schema change |
-| Realtime | Polling/SSE-ready endpoints | WebSocket deferred to frontend phase |
+## 1. Frontend Core Foundations
 
-## Component Map
+### 1.1 Technology Choices
+- **Build Tool**: Vite (`react-ts` template)
+- **Styling**: Tailwind CSS v3 with custom dark command-center palette
+- **Icons**: `lucide-react` (clean, technical, SVG-based)
+- **Charts**: `recharts` for polished, responsive dark-mode charts (Attendance Area Chart, Score Histogram, Radial Gauges)
+- **Routing**: `react-router-dom` v6
+- **QR Code Rendering**: `qrcode.react` (lightweight SVG/Canvas QR generation)
+- **State Management**:
+  - `EventContext`: Active event metadata, event list
+  - `UserRoleContext`: Active demo user & role (`organizer`, `participant`, `judge`), user list selector
+  - `LivePollHook`: Periodic auto-fetch (every 6 seconds) for leaderboard, check-in totals, and announcements
 
-### backend/app/core/
-- `config.py` — Settings via pydantic-settings (reads DATABASE_URL from .env)
-- `database.py` — SQLAlchemy engine, SessionLocal, Base, get_db dependency
+---
 
-### backend/app/models/
-- `event.py` — Event
-- `user.py` — User, ParticipantProfile
-- `registration.py` — Registration, CheckIn
-- `team.py` — Team, TeamMember
-- `submission.py` — Submission
-- `judging.py` — JudgeAssignment, Rubric, RubricCriteria, Evaluation, EvaluationScore
-- `announcement.py` — Announcement, AnnouncementView
+## 2. API Contract & Schema Mapping
 
-### backend/app/schemas/
-- One Pydantic schema file per model group (request + response models)
+The frontend strictly communicates with existing backend endpoints:
 
-### backend/app/api/
-- `events.py`, `registrations.py`, `checkins.py`, `teams.py`
-- `submissions.py`, `judging.py`, `announcements.py`
-- `leaderboard.py`, `analytics.py`
+| Feature Area | Endpoint | HTTP Method | Frontend Hook / Function |
+|--------------|----------|-------------|--------------------------|
+| **Events** | `/api/events` | GET | `getEvents()` |
+| **Events** | `/api/events/{id}` | GET | `getEvent(id)` |
+| **Users** | `/api/users` | GET | `getUsers(role?)` |
+| **Users** | `/api/users/{id}` | GET | `getUser(id)` |
+| **Registrations** | `/api/events/{id}/registrations` | GET | `getEventRegistrations(id)` |
+| **Registrations** | `/api/registrations` | POST | `registerParticipant(data)` |
+| **Check-in** | `/api/checkins/verify` | POST | `verifyCheckin(data)` |
+| **Check-in** | `/api/events/{id}/checkins` | GET | `getEventCheckins(id)` |
+| **Teams** | `/api/events/{id}/teams` | GET | `getEventTeams(id)` |
+| **Teams** | `/api/events/{id}/teams` | POST | `createTeam(id, data)` |
+| **Teams** | `/api/events/{id}/teams/{teamId}/join` | POST | `joinTeam(id, teamId, data)` |
+| **Team Discovery** | `/api/events/{id}/team-discovery/{userId}` | GET | `discoverTeammates(id, userId)` |
+| **Submissions** | `/api/events/{id}/submissions` | GET | `getEventSubmissions(id)` |
+| **Submissions** | `/api/submissions/{id}` | GET | `getSubmission(id)` |
+| **Judging** | `/api/judges/{id}/assignments` | GET | `getJudgeAssignments(id)` |
+| **Judging** | `/api/submissions/{id}/rubric` | GET | `getSubmissionRubric(id)` |
+| **Judging** | `/api/evaluations` | POST | `submitEvaluation(data)` |
+| **Judging** | `/api/judges/{id}/evaluations` | GET | `getJudgeEvaluations(id)` |
+| **Announcements** | `/api/events/{id}/announcements?all={bool}` | GET | `getAnnouncements(id, all)` |
+| **Announcements** | `/api/events/{id}/announcements` | POST | `createAnnouncement(id, data)` |
+| **Announcements** | `/api/announcements/{id}/publish` | POST | `publishAnnouncement(id)` |
+| **Announcements** | `/api/announcements/{id}/view` | POST | `recordAnnouncementView(id, data)` |
+| **Leaderboard** | `/api/events/{id}/leaderboard` | GET | `getLeaderboard(id)` |
+| **Analytics** | `/api/events/{id}/analytics` | GET | `getEventAnalytics(id)` |
 
-### backend/app/services/
-- `registration_service.py` — register, generate QR token, verify
-- `checkin_service.py` — QR verify → create check-in
-- `team_service.py` — create team, join team, discovery
-- `judging_service.py` — assign, evaluate, validate, calculate score
-- `leaderboard_service.py` — aggregate query / VIEW
-- `analytics_service.py` — aggregate statistics
-- `announcement_service.py` — CRUD, publish, record view
+---
 
-### alembic/
-- `env.py` configured to import all models
-- Initial migration: `0001_initial.py`
-
-### scripts/
-- `seed.py` — deterministic seed; safe to rerun (TRUNCATE + INSERT)
-
-### tests/
-- `test_registration.py`, `test_checkin.py`, `test_team_discovery.py`
-- `test_judging.py`, `test_leaderboard.py`, `test_announcements.py`
-
-## Proposed Changes (File List)
-
-### [NEW] Project Root
-- `.env.example`
-- `.gitignore`
-- `README.md`
-- `SPECIFICATION.md` (already created)
-- `IMPLEMENTATION_PLAN.md` (this file)
-- `DATABASE.md`
-- `BACKEND.md`
-
-### [NEW] backend/
-- `requirements.txt`
-- `app/__init__.py`
-- `app/main.py`
-- `app/core/__init__.py`
-- `app/core/config.py`
-- `app/core/database.py`
-- `app/models/__init__.py`
-- `app/models/event.py`
-- `app/models/user.py`
-- `app/models/registration.py`
-- `app/models/team.py`
-- `app/models/submission.py`
-- `app/models/judging.py`
-- `app/models/announcement.py`
-- `app/schemas/__init__.py`
-- `app/schemas/event.py`
-- `app/schemas/user.py`
-- `app/schemas/registration.py`
-- `app/schemas/team.py`
-- `app/schemas/submission.py`
-- `app/schemas/judging.py`
-- `app/schemas/announcement.py`
-- `app/schemas/leaderboard.py`
-- `app/schemas/analytics.py`
-- `app/api/__init__.py`
-- `app/api/router.py`
-- `app/api/events.py`
-- `app/api/registrations.py`
-- `app/api/checkins.py`
-- `app/api/teams.py`
-- `app/api/submissions.py`
-- `app/api/judging.py`
-- `app/api/announcements.py`
-- `app/api/leaderboard.py`
-- `app/api/analytics.py`
-- `app/services/__init__.py`
-- `app/services/registration_service.py`
-- `app/services/checkin_service.py`
-- `app/services/team_service.py`
-- `app/services/judging_service.py`
-- `app/services/leaderboard_service.py`
-- `app/services/analytics_service.py`
-- `app/services/announcement_service.py`
-- `alembic.ini`
-- `alembic/env.py`
-- `alembic/script.py.mako`
-- `alembic/versions/0001_initial_schema.py`
-- `scripts/__init__.py`
-- `scripts/seed.py`
-- `tests/__init__.py`
-- `tests/conftest.py`
-- `tests/test_registration.py`
-- `tests/test_checkin.py`
-- `tests/test_team_discovery.py`
-- `tests/test_judging.py`
-- `tests/test_leaderboard.py`
-- `tests/test_announcements.py`
-
-## Leaderboard Design
-
-```sql
--- PostgreSQL VIEW (created via Alembic migration)
-CREATE VIEW leaderboard AS
-SELECT
-    t.id AS team_id,
-    t.name AS team_name,
-    t.event_id,
-    s.id AS submission_id,
-    s.title AS submission_title,
-    COUNT(e.id) AS evaluation_count,
-    COALESCE(AVG(e.total_score), 0) AS average_score,
-    COALESCE(SUM(e.total_score), 0) AS aggregate_score,
-    RANK() OVER (
-        PARTITION BY t.event_id
-        ORDER BY COALESCE(AVG(e.total_score), 0) DESC
-    ) AS rank
-FROM teams t
-LEFT JOIN submissions s ON s.team_id = t.id AND s.status = 'submitted'
-LEFT JOIN evaluations e ON e.submission_id = s.id AND e.status = 'submitted'
-WHERE t.event_id = t.event_id  -- always true, filter in query
-GROUP BY t.id, t.name, t.event_id, s.id, s.title;
-```
-
-## Team Discovery Scoring
+## 3. UI Component Architecture
 
 ```
-match_score = 0
-For each matching skill:  +2 points
-For each matching interest: +3 points
-For each compatible role (different from seeker): +1 point
-Normalize to 0-100 by dividing by theoretical max
+frontend/src/
+├── api/
+│   └── client.ts              # Type-safe API client functions
+├── types/
+│   └── api.ts                 # Full TypeScript interfaces matching Pydantic schemas
+├── context/
+│   ├── EventContext.tsx       # Active event state & selector
+│   └── UserRoleContext.tsx    # Active role (organizer/judge/participant) & demo user switcher
+├── hooks/
+│   └── useLivePolling.ts      # Automatic periodic refresh for live screens
+├── components/
+│   ├── common/
+│   │   ├── Badge.tsx          # Status badges (success, warning, critical, active)
+│   │   ├── Card.tsx           # Standardized glass/slate container
+│   │   ├── StatCard.tsx       # Metric KPI widget with trend indicator
+│   │   ├── LoadingSkeleton.tsx# Polished loading state
+│   │   ├── EmptyState.tsx     # Clean empty message & icon
+│   │   └── Modal.tsx          # Accessible overlay modal
+│   ├── layout/
+│   │   ├── AppLayout.tsx      # Main application shell with responsive sidebar
+│   │   ├── Sidebar.tsx        # Role-based navigation links
+│   │   ├── Topbar.tsx         # Live status indicator, event picker, demo role switcher
+│   │   └── MobileNav.tsx      # Responsive drawer navigation
+│   ├── qr/
+│   │   ├── QRBadge.tsx        # High-res QR code badge with event branding
+│   │   └── QRScannerModal.tsx # Manual token & quick-paste check-in input
+│   ├── leaderboard/
+│   │   └── LeaderboardTable.tsx # Live ranked table with top-3 podium highlights
+│   └── judging/
+│       └── RubricScoringForm.tsx # Interactive criteria score sliders/inputs & live total
+└── pages/
+    ├── organizer/
+    │   ├── OrganizerDashboard.tsx  # Command Center primary showcase
+    │   ├── CheckinManager.tsx      # Check-in station & attendee verification table
+    │   ├── TeamsSubmissions.tsx    # Team formation & project tracker
+    │   ├── AnnouncementStudio.tsx  # Create, draft & publish broadcast bulletins
+    │   ├── JudgingOversight.tsx    # Judge assignments & scoring progress
+    │   ├── LiveLeaderboardPage.tsx # Live leaderboard presentation screen
+    │   └── AnalyticsDashboard.tsx  # Charts, attendance curves & engagement
+    ├── participant/
+    │   ├── ParticipantHub.tsx      # Participant home summary
+    │   ├── MyPassBadge.tsx         # Digital event badge & QR token
+    │   ├── CheckinStation.tsx      # Self-verification check-in simulation
+    │   ├── TeammateDiscovery.tsx   # Rule-based teammate matchmaking cards
+    │   ├── MyTeamView.tsx          # Team members, role assignments & join/create
+    │   ├── ProjectSubmission.tsx   # Repo/demo links submission
+    │   └── AnnouncementsFeed.tsx   # Live published broadcasts feed
+    └── judge/
+        ├── JudgeDashboard.tsx      # Assignments list & evaluation status
+        ├── EvaluateSubmission.tsx  # Full rubric grading interface
+        └── EvaluationHistory.tsx   # Completed reviews & historical score sheet
 ```
 
-## Realtime Integration Plan
+---
 
-When frontend is built, these endpoints will be enhanced:
-- `GET /api/events/{id}/checkins` — add SSE streaming variant
-- `GET /api/events/{id}/leaderboard` — add SSE streaming variant
-- `GET /api/events/{id}/announcements` — add SSE streaming variant
+## 4. Verification & Testing Strategy
 
-Implementation path: FastAPI `StreamingResponse` with SSE format, or
-upgrade to `fastapi-events` + Redis pub/sub if scale requires it.
-
-## Verification Plan
-
-### Automated
-- `pytest backend/tests/ -v` — full test suite
-
-### Manual
-1. `alembic upgrade head` — migration succeeds
-2. `python scripts/seed.py` — seed completes without errors
-3. `uvicorn app.main:app --reload` from backend/ — server starts
-4. Browse `http://localhost:8000/docs` — Swagger UI loads
-5. Test key endpoints via docs UI
+1. **Static Typing & Compilation**: `tsc --noEmit` & `npm run build`
+2. **API Verification**: Verify 100% of frontend routes connect to backend endpoints and render seed data.
+3. **Live Mutation Loop**:
+   - Verify Check-in: Run verification → Organizer Attendance increases from 30 to 31.
+   - Verify Judging: Score an assigned submission → Leaderboard recalculates and updates podium ranking live.
+   - Verify Broadcast: Organizer drafts & publishes announcement → Instant appearance in Participant bulletin.
+   - Verify Team Discovery: Match score algorithm reflects correct skill/interest overlap percentages.
