@@ -4,6 +4,7 @@ import uuid
 import pytest
 from datetime import datetime, timezone
 
+from app.core.security import hash_password
 from app.models.event import Event
 from app.models.user import User
 from app.models.team import Team
@@ -19,7 +20,12 @@ def leaderboard_setup(db):
     db.add(event)
     db.flush()
 
-    judge = User(name="LB Judge", email=f"lbjudge.{uuid.uuid4().hex[:6]}@test.com", role="judge")
+    judge = User(
+        name="LB Judge", 
+        email=f"lbjudge.{uuid.uuid4().hex[:6]}@test.com", 
+        role="judge",
+        password_hash=hash_password("testpass123"),
+    )
     db.add(judge)
     db.flush()
 

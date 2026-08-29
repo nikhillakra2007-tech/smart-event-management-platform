@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     app_debug: bool = True
     secret_key: str = "change-this-in-production"
 
+    # JWT Authentication
+    jwt_secret_key: str = "change-this-in-production-use-strong-random-secret"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 15
+    jwt_refresh_token_expire_days: int = 7
+
     # API
     api_prefix: str = "/api"
     app_title: str = "Smart Event Management Platform"

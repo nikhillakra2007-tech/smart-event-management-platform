@@ -22,11 +22,14 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  PlusCircle,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { CreateEventModal } from '../../components/organizer/CreateEventModal';
 
 export const OrganizerDashboard: React.FC = () => {
   const { currentEvent } = useEvent();
+  const [isCreateEventOpen, setIsCreateEventOpen] = useState(false);
 
   const [analytics, setAnalytics] = useState<EventAnalytics | null>(null);
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
@@ -95,6 +98,13 @@ export const OrganizerDashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setIsCreateEventOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white text-xs font-bold shadow-sm transition-colors"
+          >
+            <PlusCircle className="w-4 h-4" />
+            <span>Add Event</span>
+          </button>
           <Link
             to="/organizer/checkins"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-colors"
@@ -310,6 +320,7 @@ export const OrganizerDashboard: React.FC = () => {
           </Card>
         </div>
       </div>
+      <CreateEventModal isOpen={isCreateEventOpen} onClose={() => setIsCreateEventOpen(false)} />
     </div>
   );
 };

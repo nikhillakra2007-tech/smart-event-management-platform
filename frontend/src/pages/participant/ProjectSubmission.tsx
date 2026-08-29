@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/client';
 import { Team, Submission } from '../../types/api';
 import { Card } from '../../components/common/Card';
@@ -20,7 +20,7 @@ import clsx from 'clsx';
 
 export const ProjectSubmission: React.FC = () => {
   const { currentEvent } = useEvent();
-  const { currentUser } = useUserRole();
+  const { user } = useAuth();
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeamId, setSelectedTeamId] = useState<string>('');

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { useLivePolling } from '../../hooks/useLivePolling';
 import { api } from '../../api/client';
 import { Evaluation, Submission } from '../../types/api';
@@ -12,17 +12,17 @@ import { History, Award, CheckCircle2, MessageSquare, Calendar } from 'lucide-re
 
 export const EvaluationHistory: React.FC = () => {
   const { currentEvent } = useEvent();
-  const { currentUser } = useUserRole();
+  const { user } = useAuth();
 
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-    if (!currentUser) return;
+    if (!user) return;
     try {
       const [evalsData, subsData] = await Promise.all([
-        api.getJudgeEvaluations(currentUser.id),
+        api.getJudgeEvaluations(user.id),
         currentEvent ? api.getEventSubmissions(currentEvent.id) : Promise.resolve([]),
       ]);
       setEvaluations(evalsData);
@@ -32,9 +32,9 @@ export const EvaluationHistory: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentUser, currentEvent]);
+  }, [user, currentEvent]);
 
-  useLivePolling(fetchData, 8000, Boolean(currentUser));
+  useLivePolling(fetchData, 8000, Boolean(user));
 
   const subsMap = new Map<string, Submission>();
   submissions.forEach((s) => subsMap.set(s.id, s));
@@ -49,7 +49,7 @@ export const EvaluationHistory: React.FC = () => {
             <span>Judge Scoring History</span>
           </h1>
           <p className="text-xs text-slate-400 mt-1">
-            Historical rubric scores, feedback notes, and timestamps recorded by <span className="text-amber-300 font-semibold">{currentUser?.name}</span>.
+            Historical rubric scores, feedback notes, and timestamps recorded by <span className="text-amber-300 font-semibold">{user?.name}</span>.
           </p>
         </div>
 

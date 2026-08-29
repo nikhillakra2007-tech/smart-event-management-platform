@@ -37,6 +37,15 @@ export interface EventItem {
   updated_at: string;
 }
 
+export interface EventCreateRequest {
+  name: string;
+  description?: string | null;
+  venue?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  status?: 'draft' | 'active' | 'completed' | 'cancelled';
+}
+
 export interface Registration {
   id: string;
   event_id: string;

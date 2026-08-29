@@ -3,6 +3,7 @@
 import uuid
 import pytest
 
+from app.core.security import hash_password
 from app.models.event import Event
 from app.models.user import User
 from app.schemas.registration import RegistrationCreate
@@ -31,6 +32,7 @@ def test_user(db) -> User:
         name="Alice Tester",
         email=f"alice.{uuid.uuid4().hex[:6]}@test.com",
         role="participant",
+        password_hash=hash_password("testpass123"),
     )
     db.add(user)
     db.flush()
@@ -93,7 +95,12 @@ def test_register_nonexistent_user(db, test_event):
 def test_get_event_registrations(db, test_event):
     """Get all registrations for an event."""
     for i in range(3):
-        user = User(name=f"User {i}", email=f"user{i}.{uuid.uuid4().hex[:4]}@test.com", role="participant")
+        user = User(
+            name=f"User {i}", 
+            email=f"user{i}.{uuid.uuid4().hex[:4]}@test.com", 
+            role="participant",
+            password_hash=hash_password("testpass123"),
+        )
         db.add(user)
         db.flush()
         data = RegistrationCreate(event_id=test_event.id, user_id=user.id)
@@ -107,7 +114,12 @@ def test_qr_tokens_are_unique(db, test_event):
     """Each registration gets a unique QR token."""
     tokens = []
     for i in range(5):
-        user = User(name=f"User {i}", email=f"tok{i}.{uuid.uuid4().hex[:4]}@test.com", role="participant")
+        user = User(
+            name=f"User {i}", 
+            email=f"tok{i}.{uuid.uuid4().hex[:4]}@test.com", 
+            role="participant",
+            password_hash=hash_password("testpass123"),
+        )
         db.add(user)
         db.flush()
         data = RegistrationCreate(event_id=test_event.id, user_id=user.id)

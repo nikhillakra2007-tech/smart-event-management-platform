@@ -3,6 +3,7 @@
 import uuid
 import pytest
 
+from app.core.security import hash_password
 from app.models.event import Event
 from app.models.user import User
 from app.models.registration import Registration
@@ -17,7 +18,12 @@ def setup_registration(db):
     db.add(event)
     db.flush()
 
-    user = User(name="Bob Checker", email=f"bob.{uuid.uuid4().hex[:6]}@test.com", role="participant")
+    user = User(
+        name="Bob Checker", 
+        email=f"bob.{uuid.uuid4().hex[:6]}@test.com", 
+        role="participant",
+        password_hash=hash_password("testpass123"),
+    )
     db.add(user)
     db.flush()
 

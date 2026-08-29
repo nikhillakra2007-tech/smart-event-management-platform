@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { useLivePolling } from '../../hooks/useLivePolling';
 import { api } from '../../api/client';
 import { Registration, Team, Announcement } from '../../types/api';
@@ -23,7 +23,7 @@ import {
 
 export const ParticipantHub: React.FC = () => {
   const { currentEvent } = useEvent();
-  const { currentUser, currentProfile } = useUserRole();
+  const { user, currentProfile } = useAuth();
 
   const [registration, setRegistration] = useState<Registration | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
@@ -32,32 +32,26 @@ export const ParticipantHub: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-    if (!currentEvent || !currentUser) return;
+    if (!currentEvent || !user) return;
     try {
-      const [regs, teamsData, annData, checkinsData] = await Promise.all([
-        api.getEventRegistrations(currentEvent.id),
+      const [myReg, teamsData, annData, myCheckin] = await Promise.all([
+        api.getMyRegistration(currentEvent.id).catch(() => null),
         api.getEventTeams(currentEvent.id),
         api.getAnnouncements(currentEvent.id, false), // published only
-        api.getEventCheckins(currentEvent.id),
+        api.getMyCheckin(currentEvent.id).catch(() => ({ checked_in: false, checked_in_at: null } as any)),
       ]);
 
-      const myReg = regs.find((r) => r.user_id === currentUser.id);
-      setRegistration(myReg || null);
-
-      const myCheckin = checkinsData.find((c) => c.user_id === currentUser.id);
+      setRegistration(myReg as any);
       setIsCheckedIn(myCheckin?.checked_in ?? false);
-
-      // Find user's team if in any
-      // Teams endpoint returns teams with member counts; let's see if we can find team
       setAnnouncements(annData);
     } catch (err) {
       console.error('Failed to load participant hub data', err);
     } finally {
       setLoading(false);
     }
-  }, [currentEvent, currentUser]);
+  }, [currentEvent, user]);
 
-  useLivePolling(fetchData, 6000, Boolean(currentEvent && currentUser));
+  useLivePolling(fetchData, 6000, Boolean(currentEvent && user));
 
   if (loading && !registration) {
     return (
@@ -86,7 +80,7 @@ export const ParticipantHub: React.FC = () => {
               </Badge>
             </div>
             <h1 className="text-2xl font-black text-white tracking-tight">
-              Welcome, {currentUser?.name}!
+              Welcome, {user?.name}!
             </h1>
             <p className="text-xs text-slate-300">
               {currentEvent?.name} • Venue: {currentEvent?.venue}
@@ -186,7 +180,7 @@ export const ParticipantHub: React.FC = () => {
             <div>
               <span className="text-[11px] text-slate-400 font-semibold block mb-1.5">Skills:</span>
               <div className="flex flex-wrap gap-1.5">
-                {currentProfile?.skills?.map((skill, i) => (
+                {currentProfile?.skills?.map((skill: string, i: number) => (
                   <span
                     key={i}
                     className="px-2.5 py-1 rounded-lg bg-surface-lighter text-xs font-mono text-indigo-300 border border-indigo-900/40"
@@ -200,7 +194,7 @@ export const ParticipantHub: React.FC = () => {
             <div>
               <span className="text-[11px] text-slate-400 font-semibold block mb-1.5">Preferred Roles:</span>
               <div className="flex flex-wrap gap-1.5">
-                {currentProfile?.preferred_roles?.map((roleName, i) => (
+                {currentProfile?.preferred_roles?.map((roleName: string, i: number) => (
                   <span
                     key={i}
                     className="px-2.5 py-1 rounded-lg bg-surface-lighter text-xs font-mono text-cyan-300 border border-cyan-900/40"
@@ -214,7 +208,7 @@ export const ParticipantHub: React.FC = () => {
             <div>
               <span className="text-[11px] text-slate-400 font-semibold block mb-1.5">Project Interests:</span>
               <div className="flex flex-wrap gap-1.5">
-                {currentProfile?.project_interests?.map((interest, i) => (
+                {currentProfile?.project_interests?.map((interest: string, i: number) => (
                   <span
                     key={i}
                     className="px-2.5 py-1 rounded-lg bg-surface-lighter text-xs font-mono text-emerald-300 border border-emerald-900/40"

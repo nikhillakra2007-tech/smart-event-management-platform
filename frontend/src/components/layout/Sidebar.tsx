@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { useEvent } from '../../context/EventContext';
 import {
   LayoutDashboard,
@@ -18,6 +18,7 @@ import {
   Sparkles,
   Zap,
   Activity,
+  PlusCircle,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -27,9 +28,11 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile }) => {
-  const { role } = useUserRole();
+  const { user, isOrganizer, isParticipant, isJudge } = useAuth();
   const { currentEvent } = useEvent();
   const location = useLocation();
+
+  const role = user?.role || 'organizer';
 
   const organizerNav = [
     { label: 'Command Center', path: '/organizer', icon: LayoutDashboard, exact: true },
@@ -57,7 +60,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
     { label: 'Live Leaderboard', path: '/organizer/leaderboard', icon: Trophy },
   ];
 
-  const currentNav = role === 'organizer' ? organizerNav : role === 'participant' ? participantNav : judgeNav;
+  const currentNav = isOrganizer ? organizerNav : isParticipant ? participantNav : judgeNav;
 
   return (
     <>

@@ -21,6 +21,7 @@ import {
   LeaderboardEntry,
   EventAnalytics,
 } from '../types/api';
+import { authApi } from './auth';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
@@ -36,15 +37,52 @@ class ApiError extends Error {
   }
 }
 
+let isRefreshing = false;
+let refreshPromise: Promise<string | null> | null = null;
+
+/** Get valid access token, refreshing if needed */
+async function getValidAccessToken(): Promise<string | null> {
+  const accessToken = authApi.getAccessToken();
+  if (!accessToken) return null;
+
+  // For now, return the token as-is. Refresh logic can be added later if needed.
+  return accessToken;
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const url = `${BASE_URL}${endpoint}`;
+  const accessToken = await getValidAccessToken();
+  
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     ...(options.headers || {}),
   };
 
   try {
     const response = await fetch(url, { ...options, headers });
+    
+    // Handle 401 - token expired or invalid
+    if (response.status === 401 && accessToken) {
+      // Try to refresh token once
+      const newToken = await authApi.refresh();
+      if (newToken) {
+        // Retry with new token
+        const retryHeaders: HeadersInit = {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${newToken.access_token}`,
+          ...(options.headers || {}),
+        };
+        const retryResponse = await fetch(url, { ...options, headers: retryHeaders });
+        if (retryResponse.ok) {
+          return (await retryResponse.json()) as T;
+        }
+      }
+      // Refresh failed or retry failed - clear auth and throw
+      authApi.clearTokens();
+      throw new ApiError('Authentication expired. Please log in again.', 401);
+    }
+    
     if (!response.ok) {
       let errorDetail = `Request failed with status ${response.status}`;
       let errorData = null;
@@ -71,6 +109,11 @@ export const api = {
   // --- Events ---
   getEvents: () => request<EventItem[]>('/events'),
   getEvent: (eventId: string) => request<EventItem>(`/events/${eventId}`),
+  createEvent: (payload: { name: string; description?: string; venue?: string; start_time?: string; end_time?: string; status?: string }) =>
+    request<EventItem>('/events', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   // --- Users ---
   getUsers: (role?: 'organizer' | 'participant' | 'judge') => 
@@ -81,6 +124,8 @@ export const api = {
   // --- Registrations ---
   getEventRegistrations: (eventId: string) => 
     request<Registration[]>(`/events/${eventId}/registrations`),
+  getMyRegistration: (eventId: string) =>
+    request<Registration>(`/events/${eventId}/my-registration`),
   registerParticipant: (payload: { event_id: string; user_id: string }) =>
     request<Registration>('/registrations', {
       method: 'POST',
@@ -90,6 +135,8 @@ export const api = {
   // --- Check-ins ---
   getEventCheckins: (eventId: string) => 
     request<CheckInItem[]>(`/events/${eventId}/checkins`),
+  getMyCheckin: (eventId: string) =>
+    request<{ checked_in: boolean; checked_in_at: string | null; registration_id: string | null }>(`/events/${eventId}/my-checkin`),
   verifyCheckin: (payload: { event_id: string; qr_token: string; checked_in_by?: string }) =>
     request<CheckInVerificationResult>('/checkins/verify', {
       method: 'POST',
@@ -162,3 +209,5 @@ export const api = {
   getEventAnalytics: (eventId: string) => 
     request<EventAnalytics>(`/events/${eventId}/analytics`),
 };
+
+export { ApiError, request };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { useLivePolling } from '../../hooks/useLivePolling';
 import { api } from '../../api/client';
 import { Announcement } from '../../types/api';
@@ -20,7 +20,7 @@ import clsx from 'clsx';
 
 export const AnnouncementsFeed: React.FC = () => {
   const { currentEvent } = useEvent();
-  const { currentUser } = useUserRole();
+  const { user } = useAuth();
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,9 +32,9 @@ export const AnnouncementsFeed: React.FC = () => {
       setAnnouncements(data);
 
       // Record views for active participant
-      if (currentUser) {
+      if (user) {
         data.forEach((ann) => {
-          api.recordAnnouncementView(ann.id, { user_id: currentUser.id }).catch(() => {});
+          api.recordAnnouncementView(ann.id, { user_id: user.id }).catch(() => {});
         });
       }
     } catch (err) {
@@ -42,7 +42,7 @@ export const AnnouncementsFeed: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentEvent, currentUser]);
+  }, [currentEvent, user]);
 
   useLivePolling(fetchAnnouncements, 6000, Boolean(currentEvent));
 

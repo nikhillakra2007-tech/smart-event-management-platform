@@ -3,6 +3,7 @@
 import uuid
 import pytest
 
+from app.core.security import hash_password
 from app.models.event import Event
 from app.models.user import User, ParticipantProfile
 from app.models.team import Team, TeamMember
@@ -99,7 +100,12 @@ def discovery_setup(db):
     db.flush()
 
     # Seeker
-    seeker = User(name="Seeker User", email=f"seeker.{uuid.uuid4().hex[:6]}@test.com", role="participant")
+    seeker = User(
+        name="Seeker User", 
+        email=f"seeker.{uuid.uuid4().hex[:6]}@test.com", 
+        role="participant",
+        password_hash=hash_password("testpass123"),
+    )
     db.add(seeker)
     db.flush()
     db.add(ParticipantProfile(
@@ -110,7 +116,12 @@ def discovery_setup(db):
     ))
 
     # High-match candidate
-    high_match = User(name="High Match", email=f"high.{uuid.uuid4().hex[:6]}@test.com", role="participant")
+    high_match = User(
+        name="High Match", 
+        email=f"high.{uuid.uuid4().hex[:6]}@test.com", 
+        role="participant",
+        password_hash=hash_password("testpass123"),
+    )
     db.add(high_match)
     db.flush()
     db.add(ParticipantProfile(
@@ -121,7 +132,12 @@ def discovery_setup(db):
     ))
 
     # Low-match candidate
-    low_match = User(name="Low Match", email=f"low.{uuid.uuid4().hex[:6]}@test.com", role="participant")
+    low_match = User(
+        name="Low Match", 
+        email=f"low.{uuid.uuid4().hex[:6]}@test.com", 
+        role="participant",
+        password_hash=hash_password("testpass123"),
+    )
     db.add(low_match)
     db.flush()
     db.add(ParticipantProfile(
@@ -132,7 +148,12 @@ def discovery_setup(db):
     ))
 
     # Candidate already in a team (should be excluded)
-    in_team = User(name="In Team", email=f"inteam.{uuid.uuid4().hex[:6]}@test.com", role="participant")
+    in_team = User(
+        name="In Team", 
+        email=f"inteam.{uuid.uuid4().hex[:6]}@test.com", 
+        role="participant",
+        password_hash=hash_password("testpass123"),
+    )
     db.add(in_team)
     db.flush()
     db.add(ParticipantProfile(

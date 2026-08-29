@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/client';
 import { Registration } from '../../types/api';
 import { QRBadge } from '../../components/qr/QRBadge';
@@ -11,34 +11,37 @@ import { Card } from '../../components/common/Card';
 
 export const MyPassBadge: React.FC = () => {
   const { currentEvent } = useEvent();
-  const { currentUser, currentProfile } = useUserRole();
+  const { user, currentProfile } = useAuth();
 
   const [registration, setRegistration] = useState<Registration | null>(null);
   const [isCheckedIn, setIsCheckedIn] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentEvent || !currentUser) return;
+    if (!currentEvent || !user) return;
     const fetchPass = async () => {
       try {
         setLoading(true);
-        const [regs, checkins] = await Promise.all([
-          api.getEventRegistrations(currentEvent.id),
-          api.getEventCheckins(currentEvent.id),
-        ]);
-        const myReg = regs.find((r) => r.user_id === currentUser.id);
-        setRegistration(myReg || null);
+        // Use dedicated my-registration endpoint (works for any participant, not organizer-only)
+        const myReg = await api.getMyRegistration(currentEvent.id).catch(() => null);
+        setRegistration(myReg);
 
-        const myCheckin = checkins.find((c) => c.user_id === currentUser.id);
-        setIsCheckedIn(myCheckin?.checked_in ?? false);
+        if (myReg) {
+          const myCheckin = await api.getMyCheckin(currentEvent.id).catch(() => ({ checked_in: false, checked_in_at: null }));
+          setIsCheckedIn(myCheckin.checked_in ?? false);
+        } else {
+          setIsCheckedIn(false);
+        }
       } catch (err) {
         console.error('Failed to load pass badge', err);
+        setRegistration(null);
+        setIsCheckedIn(false);
       } finally {
         setLoading(false);
       }
     };
     fetchPass();
-  }, [currentEvent, currentUser]);
+  }, [currentEvent, user]);
 
   return (
     <div className="space-y-6 animate-fade-in max-w-4xl mx-auto">
@@ -55,7 +58,7 @@ export const MyPassBadge: React.FC = () => {
 
       {loading ? (
         <CardSkeleton rows={6} />
-      ) : !registration || !currentUser ? (
+      ) : !registration || !user ? (
         <EmptyState
           icon={QrCode}
           title="No Registration Found"
@@ -67,7 +70,7 @@ export const MyPassBadge: React.FC = () => {
           <div className="md:col-span-2">
             <QRBadge
               registration={registration}
-              user={currentUser}
+              user={user}
               profile={currentProfile}
               isCheckedIn={isCheckedIn}
             />

@@ -111,3 +111,16 @@ def get_event_checkins(db: Session, event_id: uuid.UUID) -> list[dict]:
             "checked_in_at": active_checkin.checked_in_at.isoformat() if active_checkin else None,
         })
     return results
+
+
+def get_my_checkin(db: Session, event_id: uuid.UUID, user_id: uuid.UUID) -> dict:
+    """Return current user's check-in status for event."""
+    reg = db.query(Registration).filter(Registration.event_id == event_id, Registration.user_id == user_id).first()
+    if not reg:
+        return {"checked_in": False, "checked_in_at": None, "registration_id": None}
+    active = next((c for c in reg.checkins if c.status == "active"), None)
+    return {
+        "checked_in": active is not None,
+        "checked_in_at": active.checked_in_at.isoformat() if active else None,
+        "registration_id": str(reg.id),
+    }

@@ -1,8 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 /**
- * Hook to poll an asynchronous callback at a set interval (default 6000ms).
- * Only polls when `enabled` is true.
+ * Optimized polling hook:
+ * - Only polls when `enabled` is true
+ * - Pauses when document is hidden (Page Visibility API)
+ * - Avoids duplicate calls if callback hasn't changed
  */
 export function useLivePolling(
   callback: () => Promise<any> | void,
@@ -10,21 +12,34 @@ export function useLivePolling(
   enabled: boolean = true
 ) {
   const savedCallback = useRef(callback);
+  const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     savedCallback.current = callback;
   }, [callback]);
 
+  const tick = useCallback(() => {
+    if (document.hidden) return;
+    savedCallback.current();
+  }, []);
+
   useEffect(() => {
     if (!enabled) return;
 
-    // Call immediately on mount
-    savedCallback.current();
+    // Call immediately on mount if visible
+    if (!document.hidden) savedCallback.current();
 
-    const id = setInterval(() => {
-      savedCallback.current();
-    }, intervalMs);
+    const id = window.setInterval(tick, intervalMs);
+    intervalRef.current = id;
 
-    return () => clearInterval(id);
-  }, [intervalMs, enabled]);
+    const handleVisibility = () => {
+      if (!document.hidden) tick();
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [intervalMs, enabled, tick]);
 }

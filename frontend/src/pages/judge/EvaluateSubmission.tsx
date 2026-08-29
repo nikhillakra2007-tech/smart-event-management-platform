@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/client';
 import { Submission, Rubric, Evaluation } from '../../types/api';
 import { Card } from '../../components/common/Card';
@@ -21,7 +21,7 @@ import {
 
 export const EvaluateSubmission: React.FC = () => {
   const { submissionId } = useParams<{ submissionId: string }>();
-  const { currentUser } = useUserRole();
+  const { user } = useAuth();
   const navigate = useNavigate();
 
   const [submission, setSubmission] = useState<Submission | null>(null);
@@ -31,7 +31,7 @@ export const EvaluateSubmission: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!submissionId || !currentUser) return;
+    if (!submissionId || !user) return;
 
     const loadData = async () => {
       try {
@@ -41,7 +41,7 @@ export const EvaluateSubmission: React.FC = () => {
         const [subData, rubricData, evalsData] = await Promise.all([
           api.getSubmission(submissionId),
           api.getSubmissionRubric(submissionId),
-          api.getJudgeEvaluations(currentUser.id),
+          api.getJudgeEvaluations(user.id),
         ]);
 
         setSubmission(subData);
@@ -57,7 +57,7 @@ export const EvaluateSubmission: React.FC = () => {
     };
 
     loadData();
-  }, [submissionId, currentUser]);
+  }, [submissionId, user]);
 
   if (loading) {
     return (
@@ -68,7 +68,7 @@ export const EvaluateSubmission: React.FC = () => {
     );
   }
 
-  if (error || !submission || !rubric || !currentUser) {
+  if (error || !submission || !rubric || !user) {
     return (
       <div className="max-w-xl mx-auto space-y-4">
         <Link
@@ -163,14 +163,14 @@ export const EvaluateSubmission: React.FC = () => {
             <span>Interactive Rubric Scoring Matrix</span>
           </h2>
           <span className="text-xs font-mono text-slate-400">
-            Judge: {currentUser.name}
+            Judge: {user.name}
           </span>
         </div>
 
         <RubricScoringForm
           submission={submission}
           rubric={rubric}
-          judgeId={currentUser.id}
+          judgeId={user.id}
           alreadyEvaluated={Boolean(existingEvaluation)}
           onSuccess={() => navigate('/judge')}
         />

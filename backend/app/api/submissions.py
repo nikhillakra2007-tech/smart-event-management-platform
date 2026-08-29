@@ -8,7 +8,9 @@ from sqlalchemy.orm import Session
 
 from app.core.database import get_db
 from app.models.submission import Submission
+from app.models.user import User
 from app.schemas.submission import SubmissionCreate, SubmissionResponse
+from app.api.dependencies import require_any_authenticated, require_participant
 
 router = APIRouter(tags=["Submissions"])
 
@@ -20,7 +22,7 @@ DbDep = Annotated[Session, Depends(get_db)]
     response_model=list[SubmissionResponse],
     summary="List all submissions for an event",
 )
-def list_submissions(event_id: uuid.UUID, db: DbDep):
+def list_submissions(event_id: uuid.UUID, db: DbDep, current_user: Annotated[User, Depends(require_any_authenticated)]):
     """Return all submissions for an event."""
     return (
         db.query(Submission)
@@ -34,7 +36,7 @@ def list_submissions(event_id: uuid.UUID, db: DbDep):
     response_model=SubmissionResponse,
     summary="Get a submission by ID",
 )
-def get_submission(submission_id: uuid.UUID, db: DbDep):
+def get_submission(submission_id: uuid.UUID, db: DbDep, current_user: Annotated[User, Depends(require_any_authenticated)]):
     """Return a single submission."""
     sub = db.get(Submission, submission_id)
     if not sub:
@@ -52,9 +54,19 @@ def create_or_update_submission(
     event_id: uuid.UUID,
     data: SubmissionCreate,
     db: DbDep,
+    current_user: Annotated[User, Depends(require_participant)],
 ):
-    """Create or update a team submission."""
+    """Create or update a team submission (participant only, must be team member)."""
     from datetime import datetime, timezone
+
+    # Verify user is a member of the team
+    from app.models.team import TeamMember
+    member = db.query(TeamMember).filter(
+        TeamMember.team_id == data.team_id,
+        TeamMember.user_id == current_user.id
+    ).first()
+    if not member:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not a member of this team")
 
     existing = (
         db.query(Submission)

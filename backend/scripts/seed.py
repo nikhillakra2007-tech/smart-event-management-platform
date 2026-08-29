@@ -35,6 +35,7 @@ from app.models.judging import (
     EvaluationScore,
 )
 from app.models.announcement import Announcement, AnnouncementView
+from app.core.security import hash_password
 
 
 # ---------------------------------------------------------------------------
@@ -61,15 +62,20 @@ NOW = datetime.now(timezone.utc)
 # Data definitions
 # ---------------------------------------------------------------------------
 
+# Default password for all demo users
+DEMO_PASSWORD = "demo123"
+DEMO_PASSWORD_HASH = hash_password(DEMO_PASSWORD)
+
 ORGANIZER = {
     "id": uuid.UUID("00000000-0000-0000-0000-000000000001"),
     "name": "Alex Rivera",
     "email": "alex.rivera@techhive.com",
     "role": "organizer",
+    "password_hash": DEMO_PASSWORD_HASH,
 }
 
 JUDGES = [
-    {"id": uuid.UUID(f"00000000-0000-0000-0000-00000000{i:04d}"), "name": name, "email": email, "role": "judge"}
+    {"id": uuid.UUID(f"00000000-0000-0000-0000-00000000{i:04d}"), "name": name, "email": email, "role": "judge", "password_hash": DEMO_PASSWORD_HASH}
     for i, (name, email) in enumerate([
         ("Dr. Priya Sharma", "priya.sharma@judgehive.ai"),
         ("Marcus Chen", "marcus.chen@evaluate.io"),
@@ -85,6 +91,7 @@ PARTICIPANTS = [
         "name": name,
         "email": email,
         "role": "participant",
+        "password_hash": DEMO_PASSWORD_HASH,
         "skills": skills,
         "preferred_roles": roles,
         "project_interests": interests,
@@ -222,7 +229,7 @@ def clear_data(db: Session) -> None:
     db.query(User).delete()
     db.query(Event).delete()
     db.commit()
-    print("  ✓ Data cleared")
+    print("  [OK] Data cleared")
 
 
 def seed(db: Session) -> None:
@@ -246,14 +253,14 @@ def seed(db: Session) -> None:
     )
     db.add(event)
     db.flush()
-    print(f"  ✓ Event: {event.name} ({event.id})")
+    print(f"  [OK] Event: {event.name} ({event.id})")
 
     # --- Organizer ---
     print("Creating organizer...")
     organizer = User(**ORGANIZER)
     db.add(organizer)
     db.flush()
-    print(f"  ✓ Organizer: {organizer.name}")
+    print(f"  [OK] Organizer: {organizer.name}")
 
     # --- Judges ---
     print("Creating judges...")
@@ -263,7 +270,7 @@ def seed(db: Session) -> None:
         db.add(judge)
         judge_objects.append(judge)
     db.flush()
-    print(f"  ✓ Judges: {len(judge_objects)}")
+    print(f"  [OK] Judges: {len(judge_objects)}")
 
     # --- Participants ---
     print("Creating participants and profiles...")
@@ -294,7 +301,7 @@ def seed(db: Session) -> None:
         p_data["bio"] = bio
 
     db.flush()
-    print(f"  ✓ Participants: {len(participant_objects)}")
+    print(f"  [OK] Participants: {len(participant_objects)}")
 
     # --- Registrations ---
     print("Creating registrations...")
@@ -311,7 +318,7 @@ def seed(db: Session) -> None:
         db.add(reg)
         registration_objects.append(reg)
     db.flush()
-    print(f"  ✓ Registrations: {len(registration_objects)}")
+    print(f"  [OK] Registrations: {len(registration_objects)}")
 
     # --- Check-ins (~30 out of 40) ---
     print("Creating check-ins...")
@@ -326,7 +333,7 @@ def seed(db: Session) -> None:
         db.add(ci)
         checkin_count += 1
     db.flush()
-    print(f"  ✓ Check-ins: {checkin_count}")
+    print(f"  [OK] Check-ins: {checkin_count}")
 
     # --- Teams (deduplicate member assignments) ---
     print("Creating teams and memberships...")
@@ -362,7 +369,7 @@ def seed(db: Session) -> None:
             first_idx = next(i for i in t_data["member_indices"] if i not in assigned_participants - {t_data["member_indices"][0]})
 
     db.flush()
-    print(f"  ✓ Teams: {len(team_objects)}")
+    print(f"  [OK] Teams: {len(team_objects)}")
 
     # --- Submissions ---
     print("Creating submissions...")
@@ -382,7 +389,7 @@ def seed(db: Session) -> None:
         db.add(sub)
         submission_objects.append(sub)
     db.flush()
-    print(f"  ✓ Submissions: {len(submission_objects)}")
+    print(f"  [OK] Submissions: {len(submission_objects)}")
 
     # --- Rubric ---
     print("Creating rubric and criteria...")
@@ -400,7 +407,7 @@ def seed(db: Session) -> None:
         db.add(criterion)
         criteria_objects.append(criterion)
     db.flush()
-    print(f"  ✓ Rubric: '{rubric.name}' with {len(criteria_objects)} criteria")
+    print(f"  [OK] Rubric: '{rubric.name}' with {len(criteria_objects)} criteria")
 
     # --- Judge Assignments ---
     print("Creating judge assignments...")
@@ -414,12 +421,16 @@ def seed(db: Session) -> None:
             db.add(assignment)
             assignment_objects[key] = assignment
     db.flush()
-    print(f"  ✓ Judge assignments: {len(assignment_objects)}")
+    print(f"  [OK] Judge assignments: {len(assignment_objects)}")
 
     # --- Evaluations ---
     print("Creating evaluations and scores...")
     eval_count = 0
     for (judge_idx, team_idx), scores in EVALUATION_SCORES_MATRIX.items():
+        # Leave one assignment pending for demo: Judge 0 / Team 1 (FintechFlow) remains pending
+        if (judge_idx, team_idx) == (0, 1):
+            print(f"  Skipping evaluation for judge {judge_idx} team {team_idx} to leave pending demo")
+            continue
         judge = judge_objects[judge_idx]
         sub = submission_objects[team_idx]
 
@@ -456,7 +467,7 @@ def seed(db: Session) -> None:
 
         eval_count += 1
     db.flush()
-    print(f"  ✓ Evaluations: {eval_count}")
+    print(f"  [OK] Evaluations: {eval_count}")
 
     # --- Announcements ---
     print("Creating announcements...")
@@ -474,7 +485,7 @@ def seed(db: Session) -> None:
         db.add(ann)
         ann_objects.append(ann)
     db.flush()
-    print(f"  ✓ Announcements: {len(ann_objects)}")
+    print(f"  [OK] Announcements: {len(ann_objects)}")
 
     # --- Announcement Views ---
     print("Creating announcement views...")
@@ -490,10 +501,10 @@ def seed(db: Session) -> None:
             db.add(view)
             view_count += 1
     db.flush()
-    print(f"  ✓ Announcement views: {view_count}")
+    print(f"  [OK] Announcement views: {view_count}")
 
     db.commit()
-    print("\n=== ✅ Seed complete ===")
+    print("\n=== [OK] Seed complete ===")
     print(f"  Event:         {event.name}")
     print(f"  Organizer:     1")
     print(f"  Judges:        {len(judge_objects)}")
@@ -513,7 +524,7 @@ if __name__ == "__main__":
         clear_data(db)
         seed(db)
     except Exception as e:
-        print(f"\n❌ Seed failed: {e}")
+        print(f"\n[FAIL] Seed failed: {e}")
         db.rollback()
         raise
     finally:

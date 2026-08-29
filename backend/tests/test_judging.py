@@ -3,6 +3,7 @@
 import uuid
 import pytest
 
+from app.core.security import hash_password
 from app.models.event import Event
 from app.models.user import User
 from app.models.team import Team, TeamMember
@@ -24,12 +25,22 @@ def judging_setup(db):
     db.flush()
 
     # Judge
-    judge = User(name="Test Judge", email=f"judge.{uuid.uuid4().hex[:6]}@test.com", role="judge")
+    judge = User(
+        name="Test Judge", 
+        email=f"judge.{uuid.uuid4().hex[:6]}@test.com", 
+        role="judge",
+        password_hash=hash_password("testpass123"),
+    )
     db.add(judge)
     db.flush()
 
     # Non-judge user
-    non_judge = User(name="Not A Judge", email=f"notjudge.{uuid.uuid4().hex[:6]}@test.com", role="participant")
+    non_judge = User(
+        name="Not A Judge", 
+        email=f"notjudge.{uuid.uuid4().hex[:6]}@test.com", 
+        role="participant",
+        password_hash=hash_password("testpass123"),
+    )
     db.add(non_judge)
     db.flush()
 
@@ -119,7 +130,12 @@ def test_unassigned_judge_cannot_evaluate(db, judging_setup):
 
     event, _, _, submission, rubric, criteria, _ = judging_setup
 
-    other_judge = User(name="Other Judge", email=f"other.{uuid.uuid4().hex[:6]}@test.com", role="judge")
+    other_judge = User(
+        name="Other Judge", 
+        email=f"other.{uuid.uuid4().hex[:6]}@test.com", 
+        role="judge",
+        password_hash=hash_password("testpass123"),
+    )
     db.add(other_judge)
     db.flush()
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/client';
 import { Team } from '../../types/api';
 import { Card } from '../../components/common/Card';
@@ -21,7 +21,7 @@ import clsx from 'clsx';
 
 export const MyTeamView: React.FC = () => {
   const { currentEvent } = useEvent();
-  const { currentUser } = useUserRole();
+  const { user } = useAuth();
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +53,7 @@ export const MyTeamView: React.FC = () => {
 
   const handleCreateTeam = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentEvent || !currentUser || !newTeamName.trim()) return;
+    if (!currentEvent || !user || !newTeamName.trim()) return;
 
     try {
       setCreating(true);
@@ -66,7 +66,7 @@ export const MyTeamView: React.FC = () => {
 
       // Auto join created team as leader
       await api.joinTeam(currentEvent.id, created.id, {
-        user_id: currentUser.id,
+        user_id: user.id,
         role: 'Team Lead',
       });
 
@@ -82,14 +82,14 @@ export const MyTeamView: React.FC = () => {
   };
 
   const handleJoinTeam = async (teamId: string) => {
-    if (!currentEvent || !currentUser) return;
+    if (!currentEvent || !user) return;
 
     try {
       setJoiningTeamId(teamId);
       setActionMessage(null);
 
       await api.joinTeam(currentEvent.id, teamId, {
-        user_id: currentUser.id,
+        user_id: user.id,
         role: 'Member',
       });
 

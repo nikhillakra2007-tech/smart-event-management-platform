@@ -93,3 +93,12 @@ def get_event_registrations(db: Session, event_id: uuid.UUID) -> list[Registrati
         .filter(Registration.event_id == event_id)
         .all()
     )
+
+
+def get_my_registration(db: Session, event_id: uuid.UUID, user_id: uuid.UUID) -> Registration | None:
+    """Return current user's registration for event, or None."""
+    return (
+        db.query(Registration)
+        .filter(Registration.event_id == event_id, Registration.user_id == user_id)
+        .first()
+    )

@@ -3,12 +3,14 @@
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.user import User
 from app.schemas.team import TeamCreate, TeamResponse, JoinTeamRequest, TeamDiscoveryResult
 from app.services import team_service
+from app.api.dependencies import require_any_authenticated, require_participant
 
 router = APIRouter(tags=["Teams"])
 
@@ -20,7 +22,7 @@ DbDep = Annotated[Session, Depends(get_db)]
     response_model=list[TeamResponse],
     summary="List all teams for an event",
 )
-def list_teams(event_id: uuid.UUID, db: DbDep):
+def list_teams(event_id: uuid.UUID, db: DbDep, current_user: Annotated[User, Depends(require_any_authenticated)]):
     """Return all teams for an event with member counts."""
     teams_data = team_service.get_event_teams(db, event_id)
     return [TeamResponse(**t) for t in teams_data]
@@ -32,8 +34,8 @@ def list_teams(event_id: uuid.UUID, db: DbDep):
     status_code=status.HTTP_201_CREATED,
     summary="Create a new team",
 )
-def create_team(event_id: uuid.UUID, data: TeamCreate, db: DbDep):
-    """Create a new team within an event."""
+def create_team(event_id: uuid.UUID, data: TeamCreate, db: DbDep, current_user: Annotated[User, Depends(require_participant)]):
+    """Create a new team within an event (participant only)."""
     team = team_service.create_team(db, event_id, data)
     return TeamResponse(
         id=team.id,
@@ -52,8 +54,10 @@ def create_team(event_id: uuid.UUID, data: TeamCreate, db: DbDep):
     summary="Join a team",
     status_code=status.HTTP_201_CREATED,
 )
-def join_team(event_id: uuid.UUID, team_id: uuid.UUID, data: JoinTeamRequest, db: DbDep):
-    """Add a participant to a team."""
+def join_team(event_id: uuid.UUID, team_id: uuid.UUID, data: JoinTeamRequest, db: DbDep, current_user: Annotated[User, Depends(require_participant)]):
+    """Add a participant to a team (participant only, must be self)."""
+    if str(current_user.id) != str(data.user_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Can only join yourself")
     member = team_service.join_team(db, event_id, team_id, data.user_id, data.role)
     return {"message": "Joined team successfully", "team_member_id": str(member.id)}
 
@@ -63,11 +67,13 @@ def join_team(event_id: uuid.UUID, team_id: uuid.UUID, data: JoinTeamRequest, db
     response_model=list[TeamDiscoveryResult],
     summary="Discover potential teammates",
 )
-def discover_teammates(event_id: uuid.UUID, user_id: uuid.UUID, db: DbDep):
+def discover_teammates(event_id: uuid.UUID, user_id: uuid.UUID, db: DbDep, current_user: Annotated[User, Depends(require_participant)]):
     """
     Rule-based teammate discovery.
 
     Returns participants scored by skill overlap, interest match,
     and role compatibility. Excludes users already in a team.
     """
+    if str(current_user.id) != str(user_id):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Can only discover for yourself")
     return team_service.discover_teammates(db, event_id, user_id)

@@ -7,8 +7,10 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from app.core.database import get_db
+from app.models.user import User
 from app.schemas.analytics import EventAnalytics
 from app.services import analytics_service
+from app.api.dependencies import require_organizer
 
 router = APIRouter(tags=["Analytics"])
 
@@ -20,9 +22,9 @@ DbDep = Annotated[Session, Depends(get_db)]
     response_model=EventAnalytics,
     summary="Get event analytics",
 )
-def get_analytics(event_id: uuid.UUID, db: DbDep):
+def get_analytics(event_id: uuid.UUID, db: DbDep, current_user: Annotated[User, Depends(require_organizer)]):
     """
-    Return comprehensive event analytics derived from existing data.
+    Return comprehensive event analytics derived from existing data (organizer only).
 
     Includes registration, attendance, team, submission, judging,
     score distribution, and engagement metrics.

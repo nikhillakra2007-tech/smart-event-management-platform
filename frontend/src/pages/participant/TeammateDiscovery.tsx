@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/client';
 import { TeamDiscoveryResult } from '../../types/api';
 import { Card } from '../../components/common/Card';
@@ -21,7 +21,7 @@ import clsx from 'clsx';
 
 export const TeammateDiscovery: React.FC = () => {
   const { currentEvent } = useEvent();
-  const { currentUser, currentProfile } = useUserRole();
+  const { user, currentProfile } = useAuth();
 
   const [matches, setMatches] = useState<TeamDiscoveryResult[]>([]);
   const [loading, setLoading] = useState(true);
@@ -29,17 +29,17 @@ export const TeammateDiscovery: React.FC = () => {
   const [selectedInterestFilter, setSelectedInterestFilter] = useState<string>('all');
 
   const fetchMatches = useCallback(async () => {
-    if (!currentEvent || !currentUser) return;
+    if (!currentEvent || !user) return;
     try {
       setLoading(true);
-      const data = await api.discoverTeammates(currentEvent.id, currentUser.id);
+      const data = await api.discoverTeammates(currentEvent.id, user.id);
       setMatches(data);
     } catch (err) {
       console.error('Failed to load teammate discovery', err);
     } finally {
       setLoading(false);
     }
-  }, [currentEvent, currentUser]);
+  }, [currentEvent, user]);
 
   useEffect(() => {
     fetchMatches();

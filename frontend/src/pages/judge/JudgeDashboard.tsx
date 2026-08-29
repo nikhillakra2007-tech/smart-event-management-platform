@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { useLivePolling } from '../../hooks/useLivePolling';
 import { api } from '../../api/client';
 import { JudgeAssignment, Submission, Evaluation } from '../../types/api';
@@ -23,7 +23,7 @@ import clsx from 'clsx';
 
 export const JudgeDashboard: React.FC = () => {
   const { currentEvent } = useEvent();
-  const { currentUser } = useUserRole();
+  const { user } = useAuth();
 
   const [assignments, setAssignments] = useState<JudgeAssignment[]>([]);
   const [submissions, setSubmissions] = useState<Submission[]>([]);
@@ -31,11 +31,11 @@ export const JudgeDashboard: React.FC = () => {
   const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-    if (!currentUser) return;
+    if (!user) return;
     try {
       const [assignData, evalsData] = await Promise.all([
-        api.getJudgeAssignments(currentUser.id),
-        api.getJudgeEvaluations(currentUser.id),
+        api.getJudgeAssignments(user.id),
+        api.getJudgeEvaluations(user.id),
       ]);
       setAssignments(assignData);
       setEvaluations(evalsData);
@@ -49,9 +49,9 @@ export const JudgeDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [currentUser, currentEvent]);
+  }, [user, currentEvent]);
 
-  useLivePolling(fetchData, 6000, Boolean(currentUser));
+  useLivePolling(fetchData, 6000, Boolean(user));
 
   const subsMap = new Map<string, Submission>();
   submissions.forEach((s) => subsMap.set(s.id, s));
@@ -78,7 +78,7 @@ export const JudgeDashboard: React.FC = () => {
             </Badge>
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Evaluating as <span className="text-amber-300 font-semibold">{currentUser?.name}</span> ({currentUser?.email})
+            Evaluating as <span className="text-amber-300 font-semibold">{user?.name}</span> ({user?.email})
           </p>
         </div>
 

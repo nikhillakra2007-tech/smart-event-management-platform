@@ -80,8 +80,8 @@ def join_team(
 
 
 def get_event_teams(db: Session, event_id: uuid.UUID) -> list[dict]:
-    """Return teams for an event with member count."""
-    teams = db.query(Team).filter(Team.event_id == event_id).all()
+    """Return teams for an event with member count (optimized with eager loading)."""
+    teams = db.query(Team).options(joinedload(Team.members)).filter(Team.event_id == event_id).all()
     result = []
     for team in teams:
         result.append({

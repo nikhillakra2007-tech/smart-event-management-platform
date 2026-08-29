@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { Badge } from '../common/Badge';
-import { UserRole } from '../../types/api';
 import { 
   ShieldCheck, 
   Users, 
@@ -14,7 +13,10 @@ import {
   Check, 
   Sparkles,
   Menu,
-  X
+  X,
+  LogOut,
+  User,
+  Settings,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -28,40 +30,41 @@ export const Topbar: React.FC<TopbarProps> = ({
   isMobileSidebarOpen 
 }) => {
   const { currentEvent, events, setCurrentEvent } = useEvent();
-  const { role, setRole, currentUser, setCurrentUser, getUsersByRole } = useUserRole();
+  const { user, logout, isOrganizer, isParticipant, isJudge } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
-  const roleConfigs: Record<UserRole, { label: string; icon: React.ReactNode; color: string; defaultPath: string }> = {
+  const roleConfigs = {
     organizer: {
       label: 'Organizer',
-      icon: <ShieldCheck className="w-4 h-4 text-indigo-400" />,
+      icon: ShieldCheck,
       color: 'bg-indigo-950/80 border-indigo-700/60 text-indigo-300',
       defaultPath: '/organizer',
     },
     participant: {
       label: 'Participant',
-      icon: <Users className="w-4 h-4 text-cyan-400" />,
+      icon: Users,
       color: 'bg-cyan-950/80 border-cyan-700/60 text-cyan-300',
       defaultPath: '/participant',
     },
     judge: {
       label: 'Judge',
-      icon: <Award className="w-4 h-4 text-amber-400" />,
+      icon: Award,
       color: 'bg-amber-950/80 border-amber-700/60 text-amber-300',
       defaultPath: '/judge',
     },
   };
 
-  const handleRoleChange = (newRole: UserRole) => {
-    setRole(newRole);
-    navigate(roleConfigs[newRole].defaultPath);
-  };
+  const currentRole = user?.role || 'organizer';
+  const currentConfig = roleConfigs[currentRole];
 
-  const currentRoleUsers = getUsersByRole(role);
+  const handleLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
 
   return (
     <header className="sticky top-0 z-40 h-16 w-full border-b border-surface-border bg-surface/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between shadow-sm">
@@ -133,47 +136,29 @@ export const Topbar: React.FC<TopbarProps> = ({
         </div>
       </div>
 
-      {/* Right: Role Switcher & Demo User Persona */}
+      {/* Right: User Menu */}
       <div className="flex items-center gap-2 sm:gap-4">
-        {/* Role Toggle Button Group */}
-        <div className="flex items-center p-1 rounded-xl bg-surface-lighter/80 border border-surface-border">
-          {(['organizer', 'participant', 'judge'] as UserRole[]).map((r) => {
-            const isActive = role === r;
-            const config = roleConfigs[r];
-            return (
-              <button
-                key={r}
-                onClick={() => handleRoleChange(r)}
-                className={clsx(
-                  'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-lg text-xs font-semibold transition-all duration-150',
-                  isActive
-                    ? 'bg-surface text-white shadow-sm border border-white/10'
-                    : 'text-slate-400 hover:text-slate-200'
-                )}
-                title={`Switch to ${config.label} View`}
-              >
-                {config.icon}
-                <span className="hidden sm:inline">{config.label}</span>
-              </button>
-            );
-          })}
+        {/* Role Badge */}
+        <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-lg">
+          <currentConfig.icon className={`w-4 h-4 ${currentConfig.color.replace('bg-indigo-950/80 border-indigo-700/60 text-indigo-300', 'text-indigo-400').replace('bg-cyan-950/80 border-cyan-700/60 text-cyan-300', 'text-cyan-400').replace('bg-amber-950/80 border-amber-700/60 text-amber-300', 'text-amber-400')}`} />
+          <span className="text-xs font-semibold">{currentConfig.label}</span>
         </div>
 
-        {/* Active Demo User Dropdown */}
+        {/* Active User Dropdown */}
         <div className="relative">
           <button
             onClick={() => setIsUserDropdownOpen(!isUserDropdownOpen)}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-surface-lighter/60 border border-surface-border hover:border-slate-600 transition-colors"
           >
             <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
-              {currentUser?.name ? currentUser.name.charAt(0) : 'U'}
+              {user?.name ? user.name.charAt(0) : 'U'}
             </div>
             <div className="hidden xl:block text-left">
               <span className="text-xs font-semibold text-slate-200 block truncate max-w-[120px]">
-                {currentUser?.name || 'User'}
+                {user?.name || 'User'}
               </span>
               <span className="text-[10px] text-slate-400 block truncate max-w-[120px]">
-                {currentUser?.email || ''}
+                {user?.email || ''}
               </span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -185,41 +170,56 @@ export const Topbar: React.FC<TopbarProps> = ({
                 className="fixed inset-0 z-40"
                 onClick={() => setIsUserDropdownOpen(false)}
               />
-              <div className="absolute right-0 mt-2 w-72 rounded-xl bg-surface border border-surface-border shadow-2xl p-2 z-50 animate-fade-in max-h-80 overflow-y-auto">
-                <div className="px-2.5 py-1.5 border-b border-surface-border mb-1">
-                  <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider block">
-                    Demo Personas ({roleConfigs[role].label})
-                  </span>
-                  <span className="text-[10px] text-slate-500">
-                    Switch persona to test role data
-                  </span>
+              <div className="absolute right-0 mt-2 w-56 rounded-xl bg-surface border border-surface-border shadow-2xl p-2 z-50 animate-fade-in">
+                <div className="px-2.5 py-2 border-b border-surface-border mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center text-white font-bold text-xs">
+                      {user?.name ? user.name.charAt(0) : 'U'}
+                    </div>
+                    <div>
+                      <span className="text-xs font-semibold text-slate-200 block truncate">
+                        {user?.name || 'User'}
+                      </span>
+                      <span className="text-[10px] text-slate-400 block truncate">
+                        {user?.email || ''}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-1">
+                    <currentConfig.icon className={`w-3.5 h-3.5 ${currentConfig.color.replace('bg-indigo-950/80 border-indigo-700/60 text-indigo-300', 'text-indigo-400').replace('bg-cyan-950/80 border-cyan-700/60 text-cyan-300', 'text-cyan-400').replace('bg-amber-950/80 border-amber-700/60 text-amber-300', 'text-amber-400')}`} />
+                    <span className="text-xs font-medium ml-1">{currentConfig.label}</span>
+                  </div>
                 </div>
 
                 <div className="space-y-0.5 mt-1">
-                  {currentRoleUsers.map((u) => {
-                    const isSelected = currentUser?.id === u.id;
-                    return (
-                      <button
-                        key={u.id}
-                        onClick={() => {
-                          setCurrentUser(u);
-                          setIsUserDropdownOpen(false);
-                        }}
-                        className={clsx(
-                          'w-full flex items-center justify-between px-2.5 py-2 rounded-lg text-xs transition-colors text-left',
-                          isSelected
-                            ? 'bg-indigo-600/20 text-indigo-300 border border-indigo-500/30'
-                            : 'text-slate-300 hover:bg-surface-lighter'
-                        )}
-                      >
-                        <div className="truncate pr-2">
-                          <span className="font-semibold block truncate text-slate-200">{u.name}</span>
-                          <span className="text-[10px] text-slate-400 block truncate">{u.email}</span>
-                        </div>
-                        {isSelected && <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
-                      </button>
-                    );
-                  })}
+                  <button
+                    onClick={() => {
+                      setIsUserDropdownOpen(false);
+                      navigate(currentConfig.defaultPath);
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs text-slate-300 hover:bg-surface-lighter hover:text-slate-100 transition-colors text-left"
+                  >
+                    <Sparkles className="w-4 h-4 text-indigo-400" />
+                    <span>Go to Dashboard</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsUserDropdownOpen(false);
+                      navigate('/organizer/analytics');
+                    }}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs text-slate-300 hover:bg-surface-lighter hover:text-slate-100 transition-colors text-left"
+                  >
+                    <Settings className="w-4 h-4 text-slate-400" />
+                    <span>Settings</span>
+                  </button>
+                  <hr className="border-surface-border my-1" />
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs text-rose-300 hover:bg-rose-950/20 hover:text-rose-200 transition-colors text-left"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    <span>Log Out</span>
+                  </button>
                 </div>
               </div>
             </>

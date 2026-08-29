@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { useLivePolling } from '../../hooks/useLivePolling';
 import { api } from '../../api/client';
 import { CheckInItem, CheckInVerificationResult } from '../../types/api';
@@ -23,7 +23,7 @@ import clsx from 'clsx';
 
 export const CheckinManager: React.FC = () => {
   const { currentEvent } = useEvent();
-  const { currentUser } = useUserRole();
+  const { user } = useAuth();
 
   const [checkins, setCheckins] = useState<CheckInItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +64,7 @@ export const CheckinManager: React.FC = () => {
       const result = await api.verifyCheckin({
         event_id: currentEvent.id,
         qr_token: inputToken.trim(),
-        checked_in_by: currentUser?.id,
+        checked_in_by: user?.id,
       });
 
       setVerifyResult({ success: true, data: result });

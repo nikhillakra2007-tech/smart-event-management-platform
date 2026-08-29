@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { api } from '../../api/client';
 import { Registration, CheckInVerificationResult } from '../../types/api';
 import { Card } from '../../components/common/Card';
@@ -17,7 +17,7 @@ import {
 
 export const CheckinStation: React.FC = () => {
   const { currentEvent } = useEvent();
-  const { currentUser } = useUserRole();
+  const { user } = useAuth();
 
   const [registration, setRegistration] = useState<Registration | null>(null);
   const [tokenInput, setTokenInput] = useState('');
@@ -29,17 +29,17 @@ export const CheckinStation: React.FC = () => {
   } | null>(null);
 
   useEffect(() => {
-    if (!currentEvent || !currentUser) return;
+    if (!currentEvent || !user) return;
     api.getEventRegistrations(currentEvent.id)
       .then((regs) => {
-        const myReg = regs.find((r) => r.user_id === currentUser.id);
+        const myReg = regs.find((r) => r.user_id === user.id);
         if (myReg) {
           setRegistration(myReg);
           setTokenInput(myReg.qr_token);
         }
       })
       .catch(console.error);
-  }, [currentEvent, currentUser]);
+  }, [currentEvent, user]);
 
   const handleSelfVerify = async () => {
     if (!currentEvent || !tokenInput.trim()) return;
@@ -51,7 +51,7 @@ export const CheckinStation: React.FC = () => {
       const res = await api.verifyCheckin({
         event_id: currentEvent.id,
         qr_token: tokenInput.trim(),
-        checked_in_by: currentUser?.id,
+        checked_in_by: user?.id,
       });
 
       setResult({ success: true, data: res });
@@ -94,7 +94,7 @@ export const CheckinStation: React.FC = () => {
           </div>
           {registration && (
             <p className="text-[11px] text-slate-400">
-              Auto-filled with active participant ({currentUser?.name}) pass token.
+              Auto-filled with active participant ({user?.name}) pass token.
             </p>
           )}
         </div>

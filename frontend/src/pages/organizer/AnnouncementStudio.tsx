@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useEvent } from '../../context/EventContext';
-import { useUserRole } from '../../context/UserRoleContext';
+import { useAuth } from '../../context/AuthContext';
 import { useLivePolling } from '../../hooks/useLivePolling';
 import { api } from '../../api/client';
 import { Announcement } from '../../types/api';
@@ -24,7 +24,7 @@ import clsx from 'clsx';
 
 export const AnnouncementStudio: React.FC = () => {
   const { currentEvent } = useEvent();
-  const { currentUser } = useUserRole();
+  const { user } = useAuth();
 
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,7 +53,7 @@ export const AnnouncementStudio: React.FC = () => {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!currentEvent || !currentUser || !title.trim() || !message.trim()) return;
+    if (!currentEvent || !user || !title.trim() || !message.trim()) return;
 
     try {
       setCreating(true);
@@ -63,7 +63,7 @@ export const AnnouncementStudio: React.FC = () => {
         title: title.trim(),
         message: message.trim(),
         type,
-        created_by: currentUser.id,
+        created_by: user.id,
       });
 
       setTitle('');

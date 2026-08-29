@@ -25,21 +25,25 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setError(null);
       const data = await api.getEvents();
       setEvents(data);
-      if (data.length > 0 && !currentEvent) {
-        // Default to the first active event or first event
-        const active = data.find((e) => e.status === 'active') || data[0];
-        setCurrentEvent(active);
-      }
+      // Only auto-select if no currentEvent
+      setCurrentEvent(prev => {
+        if (prev) return prev;
+        if (data.length > 0) {
+          const active = data.find((e) => e.status === 'active') || data[0];
+          return active;
+        }
+        return null;
+      });
     } catch (err: any) {
       setError(err.message || 'Failed to fetch events');
     } finally {
       setLoading(false);
     }
-  }, [currentEvent]);
+  }, []);
 
   useEffect(() => {
     fetchEvents();
-  }, []);
+  }, [fetchEvents]);
 
   return (
     <EventContext.Provider
