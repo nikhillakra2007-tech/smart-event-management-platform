@@ -2,6 +2,10 @@
 
 > A unified, real-time command center and event management system for hackathons, tech fests, and conferences.
 
+## 🚀 Live Demo
+
+[Smart Event Management Platform](https://smart-event-management-platform-beta.vercel.app)
+
 ## Problem Statement
 
 Organizing large-scale events requires juggling multiple disconnected platforms for registration, check-in, team formation, judging, and live tracking. This platform consolidates the entire event lifecycle into a single interactive dark-mode-first command center backed by a robust FastAPI + PostgreSQL backend.
