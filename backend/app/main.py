@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.core.database import check_db_connection
 from app.api.router import api_router
 
+
 app = FastAPI(
     title=settings.app_title,
     description=settings.app_description,
@@ -15,21 +16,40 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# CORS — permissive for development; restrict in production
+
+# ============================================================
+# CORS
+# ============================================================
+
+ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "https://smart-event-management-platform-beta.vercel.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "https://smart-event-management-platform-beta.vercel.app",
-    ],
+    allow_origins=ALLOWED_ORIGINS,
+    allow_origin_regex=r"https://.*\.vercel\.app",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Mount all API routers under /api prefix
-app.include_router(api_router, prefix=settings.api_prefix)
 
+# ============================================================
+# API ROUTES
+# ============================================================
+
+app.include_router(
+    api_router,
+    prefix=settings.api_prefix,
+)
+
+
+# ============================================================
+# HEALTH / ROOT
+# ============================================================
 
 @app.get("/", tags=["Health"])
 def root():
@@ -46,6 +66,7 @@ def root():
 def health():
     """Health check including database connectivity."""
     db_ok = check_db_connection()
+
     return {
         "status": "healthy" if db_ok else "degraded",
         "database": "connected" if db_ok else "disconnected",
