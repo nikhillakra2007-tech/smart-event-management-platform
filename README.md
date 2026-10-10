@@ -37,24 +37,7 @@ The Smart Event Management Platform brings these workflows together into one sys
 
 ---
 
-## ✨ Key Features
 
-### 🔐 Authentication & Role-Based Access
-
-The platform supports separate access for:
-
-- **Organizer**
-- **Judge**
-- **Participant**
-
-Authenticated users receive JWT-based access tokens.
-
-Users are restricted from accessing portals belonging to other roles.
-
-For example:
-
-```text
-Participant
     ↓
 Participant Portal ✅
     ↓
