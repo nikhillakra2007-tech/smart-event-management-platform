@@ -5,6 +5,15 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface RegisterRequest {
+  name: string;
+  email: string;
+  password: string;
+  role: 'organizer' | 'participant' | 'judge';
+  avatar_url?: string | null;
+}
+
+
 export interface TokenResponse {
   access_token: string;
   refresh_token: string;

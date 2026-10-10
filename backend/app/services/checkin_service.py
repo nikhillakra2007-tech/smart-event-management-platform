@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload, selectinload
 
 from app.models.registration import Registration, CheckIn
 from app.schemas.registration import QRVerifyRequest, CheckInWithParticipantResponse, CheckInResponse
@@ -90,9 +90,10 @@ def verify_and_checkin(
 
 
 def get_event_checkins(db: Session, event_id: uuid.UUID) -> list[dict]:
-    """Return all check-ins for an event with participant details."""
+    """Return all check-ins for an event with participant details (optimized single query)."""
     registrations = (
         db.query(Registration)
+        .options(joinedload(Registration.user), selectinload(Registration.checkins))
         .filter(Registration.event_id == event_id)
         .all()
     )

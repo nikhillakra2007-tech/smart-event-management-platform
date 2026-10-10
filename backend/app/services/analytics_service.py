@@ -61,15 +61,15 @@ def get_event_analytics(db: Session, event_id: uuid.UUID) -> EventAnalytics:
         .scalar()
     ) or 0
 
-    # --- Evaluations ---
-    evaluations = (
-        db.query(Evaluation)
+    # --- Evaluations (query only needed scalar columns) ---
+    eval_rows = (
+        db.query(Evaluation.submission_id, Evaluation.total_score)
         .join(Submission, Evaluation.submission_id == Submission.id)
         .filter(Submission.event_id == event_id, Evaluation.status == "submitted")
         .all()
     )
-    evaluated_submissions = len({e.submission_id for e in evaluations})
-    scores = [e.total_score for e in evaluations if e.total_score is not None]
+    evaluated_submissions = len({row.submission_id for row in eval_rows})
+    scores = [row.total_score for row in eval_rows if row.total_score is not None]
     average_score = round(sum(scores) / len(scores), 4) if scores else None
 
     # Score distribution buckets (0-20, 20-40, 40-60, 60-80, 80-100)
@@ -105,16 +105,22 @@ def get_event_analytics(db: Session, event_id: uuid.UUID) -> EventAnalytics:
         for row in attendance_rows
     ]
 
-    # --- Announcements ---
-    announcements = (
-        db.query(Announcement)
+    # --- Announcements (single aggregation query, no N+1) ---
+    announcement_rows = (
+        db.query(
+            Announcement.title,
+            Announcement.type,
+            func.count(AnnouncementView.id).label("view_count"),
+        )
+        .outerjoin(AnnouncementView, Announcement.id == AnnouncementView.announcement_id)
         .filter(Announcement.event_id == event_id, Announcement.is_published == True)
+        .group_by(Announcement.id, Announcement.title, Announcement.type)
         .all()
     )
     announcement_stats = []
     total_views = 0
-    for ann in announcements:
-        vc = len(ann.views)
+    for ann in announcement_rows:
+        vc = int(ann.view_count)
         total_views += vc
         announcement_stats.append(
             AnnouncementViewStat(

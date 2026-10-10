@@ -19,6 +19,7 @@ import {
   Zap,
   Activity,
   PlusCircle,
+  CalendarDays,
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -36,6 +37,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isMobileOpen, onCloseMobile })
 
   const organizerNav = [
     { label: 'Command Center', path: '/organizer', icon: LayoutDashboard, exact: true },
+    { label: 'Event Planner', path: '/organizer/planner', icon: CalendarDays },
     { label: 'Check-in Monitor', path: '/organizer/checkins', icon: UserCheck },
     { label: 'Teams & Submissions', path: '/organizer/teams', icon: Users2 },
     { label: 'Announcements Studio', path: '/organizer/announcements', icon: Megaphone },

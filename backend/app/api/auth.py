@@ -14,14 +14,61 @@ from app.core.security import (
     create_refresh_token,
     decode_token,
     verify_password,
+    hash_password,
 )
-from app.models.user import User
-from app.schemas.auth import LoginRequest, RefreshRequest, TokenResponse, UserResponse
+from app.models.user import User, ParticipantProfile
+from app.schemas.auth import LoginRequest, RegisterRequest, RefreshRequest, TokenResponse, UserResponse
 from app.api.dependencies import get_current_user
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 DbDep = Annotated[Session, Depends(get_db)]
+
+
+@router.post("/register", response_model=TokenResponse, summary="User registration")
+def register(data: RegisterRequest, db: DbDep):
+    """Register a new user and return access + refresh tokens."""
+    existing = db.query(User).filter(User.email == data.email).first()
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="A user with this email address already exists",
+        )
+
+    new_user = User(
+        name=data.name,
+        email=data.email,
+        role=data.role,
+        password_hash=hash_password(data.password),
+        avatar_url=data.avatar_url,
+    )
+    db.add(new_user)
+    db.flush()
+
+    if data.role == "participant":
+        profile = ParticipantProfile(
+            user_id=new_user.id,
+            skills=["Full Stack", "TypeScript", "Python"],
+            preferred_roles=["Developer"],
+            project_interests=["AI & Automation", "Cloud Platforms"],
+            bio=f"Joined platform as {data.role}",
+        )
+        db.add(profile)
+
+    db.commit()
+    db.refresh(new_user)
+
+    token_data = {"sub": str(new_user.id), "role": new_user.role}
+    access_token = create_access_token(
+        token_data, expires_delta=timedelta(minutes=settings.jwt_access_token_expire_minutes)
+    )
+    refresh_token = create_refresh_token(token_data)
+
+    return TokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        expires_in=settings.jwt_access_token_expire_minutes * 60,
+    )
 
 
 @router.post("/login", response_model=TokenResponse, summary="User login")

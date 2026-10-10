@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { useEvent } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
-import { Badge } from '../common/Badge';
 import { 
   ShieldCheck, 
   Users, 
@@ -30,12 +29,21 @@ export const Topbar: React.FC<TopbarProps> = ({
   isMobileSidebarOpen 
 }) => {
   const { currentEvent, events, setCurrentEvent } = useEvent();
-  const { user, logout, isOrganizer, isParticipant, isJudge } = useAuth();
+  const { user, login, logout } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
 
   const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
+
+  const handleSwitchPersona = async (email: string, targetPath: string) => {
+    setIsUserDropdownOpen(false);
+    try {
+      await login(email, 'demo123');
+      navigate(targetPath);
+    } catch (err) {
+      console.error('Failed to switch persona', err);
+    }
+  };
 
   const roleConfigs = {
     organizer: {
@@ -65,6 +73,7 @@ export const Topbar: React.FC<TopbarProps> = ({
     await logout();
     navigate('/login');
   };
+
 
   return (
     <header className="sticky top-0 z-40 h-16 w-full border-b border-surface-border bg-surface/90 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between shadow-sm">
@@ -192,6 +201,45 @@ export const Topbar: React.FC<TopbarProps> = ({
                 </div>
 
                 <div className="space-y-0.5 mt-1">
+                  <div className="px-2.5 py-1 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    Switch Demo Persona
+                  </div>
+                  <div className="grid grid-cols-3 gap-1 px-1 mb-2">
+                    <button
+                      onClick={() => handleSwitchPersona('alex.rivera@techhive.com', '/organizer')}
+                      className={clsx(
+                        'px-1.5 py-1 rounded text-[10px] font-bold transition-all text-center truncate',
+                        currentRole === 'organizer'
+                          ? 'bg-indigo-600/30 text-indigo-300 border border-indigo-500/50'
+                          : 'bg-surface-lighter/50 text-slate-400 hover:text-slate-200'
+                      )}
+                    >
+                      Organizer
+                    </button>
+                    <button
+                      onClick={() => handleSwitchPersona('arjun.mehta@dev.io', '/participant')}
+                      className={clsx(
+                        'px-1.5 py-1 rounded text-[10px] font-bold transition-all text-center truncate',
+                        currentRole === 'participant'
+                          ? 'bg-cyan-600/30 text-cyan-300 border border-cyan-500/50'
+                          : 'bg-surface-lighter/50 text-slate-400 hover:text-slate-200'
+                      )}
+                    >
+                      Builder
+                    </button>
+                    <button
+                      onClick={() => handleSwitchPersona('priya.sharma@judgehive.ai', '/judge')}
+                      className={clsx(
+                        'px-1.5 py-1 rounded text-[10px] font-bold transition-all text-center truncate',
+                        currentRole === 'judge'
+                          ? 'bg-amber-600/30 text-amber-300 border border-amber-500/50'
+                          : 'bg-surface-lighter/50 text-slate-400 hover:text-slate-200'
+                      )}
+                    >
+                      Judge
+                    </button>
+                  </div>
+
                   <button
                     onClick={() => {
                       setIsUserDropdownOpen(false);
@@ -205,12 +253,12 @@ export const Topbar: React.FC<TopbarProps> = ({
                   <button
                     onClick={() => {
                       setIsUserDropdownOpen(false);
-                      navigate('/organizer/analytics');
+                      navigate('/organizer/planner');
                     }}
                     className="w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-xs text-slate-300 hover:bg-surface-lighter hover:text-slate-100 transition-colors text-left"
                   >
-                    <Settings className="w-4 h-4 text-slate-400" />
-                    <span>Settings</span>
+                    <Calendar className="w-4 h-4 text-indigo-400" />
+                    <span>Event Planner</span>
                   </button>
                   <hr className="border-surface-border my-1" />
                   <button

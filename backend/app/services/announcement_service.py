@@ -3,7 +3,7 @@
 import uuid
 
 from fastapi import HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.models.announcement import Announcement, AnnouncementView
 from app.schemas.announcement import AnnouncementCreate
@@ -13,7 +13,11 @@ def list_announcements(
     db: Session, event_id: uuid.UUID, published_only: bool = True
 ) -> list[Announcement]:
     """Return announcements for an event, optionally filtering to published only."""
-    q = db.query(Announcement).filter(Announcement.event_id == event_id)
+    q = (
+        db.query(Announcement)
+        .options(selectinload(Announcement.views))
+        .filter(Announcement.event_id == event_id)
+    )
     if published_only:
         q = q.filter(Announcement.is_published == True)
     return q.order_by(Announcement.created_at.desc()).all()
@@ -21,7 +25,12 @@ def list_announcements(
 
 def get_announcement(db: Session, announcement_id: uuid.UUID) -> Announcement:
     """Get a single announcement by ID."""
-    ann = db.get(Announcement, announcement_id)
+    ann = (
+        db.query(Announcement)
+        .options(selectinload(Announcement.views))
+        .filter(Announcement.id == announcement_id)
+        .first()
+    )
     if not ann:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

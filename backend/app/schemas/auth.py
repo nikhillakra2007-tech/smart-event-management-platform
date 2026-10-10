@@ -14,6 +14,17 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterRequest(BaseModel):
+    """User registration payload."""
+
+    name: str
+    email: EmailStr
+    password: str
+    role: Literal["participant", "judge", "organizer"] = "participant"
+    avatar_url: str | None = None
+
+
+
 class TokenResponse(BaseModel):
     """Token response payload."""
 

@@ -23,6 +23,7 @@ import {
   Clock,
   ExternalLink,
   PlusCircle,
+  CalendarDays,
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { CreateEventModal } from '../../components/organizer/CreateEventModal';
@@ -98,11 +99,18 @@ export const OrganizerDashboard: React.FC = () => {
         </div>
 
         <div className="flex items-center gap-2">
+          <Link
+            to="/organizer/planner"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white text-xs font-bold shadow-sm transition-all"
+          >
+            <CalendarDays className="w-4 h-4" />
+            <span>Event Planner</span>
+          </Link>
           <button
             onClick={() => setIsCreateEventOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-cyan-500 hover:from-indigo-500 hover:to-cyan-400 text-white text-xs font-bold shadow-sm transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-lighter hover:bg-surface-hover border border-surface-border text-slate-200 text-xs font-semibold transition-colors"
           >
-            <PlusCircle className="w-4 h-4" />
+            <PlusCircle className="w-4 h-4 text-cyan-400" />
             <span>Add Event</span>
           </button>
           <Link

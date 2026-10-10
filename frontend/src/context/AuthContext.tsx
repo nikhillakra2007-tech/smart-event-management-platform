@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { authApi } from '../api/auth';
 import { api } from '../api/client';
-import type { AuthUser, AuthState } from '../types/auth';
+import type { AuthUser, AuthState, RegisterRequest } from '../types/auth';
 import type { ParticipantProfile } from '../types/api';
 
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<void>;
+  register: (data: RegisterRequest) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   isOrganizer: boolean;
@@ -109,6 +110,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
+  const register = useCallback(async (data: RegisterRequest) => {
+    setState(prev => ({ ...prev, isLoading: true }));
+
+    try {
+      const tokens = await authApi.register(data);
+      const user = await authApi.getMe();
+
+      if (user) {
+        setState({
+          user,
+          accessToken: tokens.access_token,
+          refreshToken: tokens.refresh_token,
+          isAuthenticated: true,
+          isLoading: false,
+        });
+      } else {
+        throw new Error('Failed to load user profile after registration');
+      }
+    } catch (error) {
+      setState(prev => ({ ...prev, isLoading: false }));
+      throw error;
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     await authApi.logout();
     setCurrentProfile(null);
@@ -139,6 +164,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const value: AuthContextType = {
     ...state,
     login,
+    register,
     logout,
     checkAuth,
     isOrganizer: state.user?.role === 'organizer',

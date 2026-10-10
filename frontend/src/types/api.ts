@@ -233,3 +233,65 @@ export interface EventAnalytics {
   announcement_stats: AnnouncementViewStat[];
   total_announcement_views: number;
 }
+
+// --- Event Planner Types ---
+
+export interface ScheduleItem {
+  id: string;
+  event_id: string;
+  title: string;
+  description?: string | null;
+  day_number: number;
+  start_time: string;
+  end_time?: string | null;
+  location?: string | null;
+  category: 'general' | 'keynote' | 'workshop' | 'milestone' | 'meal' | 'ceremony' | 'networking' | 'judging';
+  speaker?: string | null;
+  is_milestone: boolean;
+  order_index: number;
+  created_at: string;
+}
+
+export interface PlannerTask {
+  id: string;
+  event_id: string;
+  title: string;
+  description?: string | null;
+  status: 'todo' | 'in_progress' | 'completed' | 'blocked';
+  priority: 'critical' | 'high' | 'medium' | 'low';
+  category: 'logistics' | 'marketing' | 'sponsors' | 'mentors' | 'prizes' | 'catering' | 'platform';
+  assignee?: string | null;
+  due_date?: string | null;
+  completed_at?: string | null;
+  order_index: number;
+  created_at: string;
+}
+
+export interface BudgetItem {
+  id: string;
+  event_id: string;
+  item_name: string;
+  category: 'venue' | 'catering' | 'prizes' | 'marketing' | 'tech' | 'logistics' | 'general';
+  planned_cost: number;
+  actual_cost: number;
+  status: 'planned' | 'approved' | 'paid' | 'cancelled';
+  vendor?: string | null;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface PlannerOverview {
+  schedule_items: ScheduleItem[];
+  tasks: PlannerTask[];
+  budget_items: BudgetItem[];
+  total_planned_budget: number;
+  total_actual_budget: number;
+  task_stats: {
+    todo: number;
+    in_progress: number;
+    completed: number;
+    blocked: number;
+    total: number;
+  };
+}
+

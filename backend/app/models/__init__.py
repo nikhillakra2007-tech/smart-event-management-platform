@@ -13,6 +13,7 @@ from app.models.judging import (
     EvaluationScore,
 )
 from app.models.announcement import Announcement, AnnouncementView
+from app.models.planner import EventScheduleItem, EventPlannerTask, EventBudgetItem
 
 __all__ = [
     "Event",
@@ -30,4 +31,7 @@ __all__ = [
     "EvaluationScore",
     "Announcement",
     "AnnouncementView",
+    "EventScheduleItem",
+    "EventPlannerTask",
+    "EventBudgetItem",
 ]

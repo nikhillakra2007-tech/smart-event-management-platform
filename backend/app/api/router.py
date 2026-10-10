@@ -14,6 +14,7 @@ from app.api import (
     announcements,
     leaderboard,
     analytics,
+    planner,
 )
 
 api_router = APIRouter()
@@ -29,4 +30,5 @@ api_router.include_router(judging.router)
 api_router.include_router(announcements.router)
 api_router.include_router(leaderboard.router)
 api_router.include_router(analytics.router)
+api_router.include_router(planner.router)
 
