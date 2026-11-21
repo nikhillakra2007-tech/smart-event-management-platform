@@ -26,6 +26,7 @@ import {
   PlannerOverview,
 } from '../types/api';
 import { authApi } from './auth';
+import { markMockDataServed } from './demoMode';
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000/api';
 
@@ -308,9 +309,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     } catch (err: any) {
       clearTimeout(timeoutId);
       
-      // Check for graceful fallback on network / timeout / cold start
+      // Check for graceful fallback on network / timeout / cold start.
+      // Serving sample data is never silent: the UI labels it via demoMode.
       const fallback = getMockFallback<T>(endpoint);
       if (fallback !== null) {
+        markMockDataServed(endpoint);
         if (method === 'GET') {
           responseCache.set(cacheKey, { timestamp: Date.now(), data: fallback });
         }

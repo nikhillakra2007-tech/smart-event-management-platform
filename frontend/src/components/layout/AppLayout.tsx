@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Topbar } from './Topbar';
 import { Sidebar } from './Sidebar';
+import { DemoDataBanner } from '../common/DemoDataBanner';
 
 export const AppLayout: React.FC = () => {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
@@ -24,6 +25,7 @@ export const AppLayout: React.FC = () => {
 
         {/* Content Container */}
         <main className="flex-1 min-w-0 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+          <DemoDataBanner />
           <Outlet />
         </main>
       </div>
