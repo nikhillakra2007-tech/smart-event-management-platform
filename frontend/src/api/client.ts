@@ -264,8 +264,12 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       const response = await fetch(url, { ...options, headers, signal: controller.signal });
       clearTimeout(timeoutId);
       
-      // Handle 401 - token expired or invalid
-      if (response.status === 401 && accessToken) {
+      // Handle 401 - token expired or invalid.
+      // Never attempt a token refresh for auth endpoints themselves: a 401
+      // from /auth/refresh while holding an invalid token would trigger
+      // another refresh, which 401s again - an infinite recursion that
+      // hangs the session instead of failing back to the login screen.
+      if (response.status === 401 && accessToken && !endpoint.startsWith('/auth/')) {
         const newToken = await authApi.refresh();
         if (newToken) {
           const retryHeaders: HeadersInit = {
