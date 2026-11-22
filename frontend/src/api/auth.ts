@@ -195,6 +195,12 @@ export const authApi = {
     return this.getStoredTokens()?.accessToken ?? null;
   },
 
+  /** True when the session came from the offline demo-persona fallback, not
+   * the backend. Demo sessions cannot save anything; the UI labels them. */
+  isDemoSession(): boolean {
+    return this.getAccessToken()?.startsWith('demo-token-') ?? false;
+  },
+
   /** Get refresh token */
   getRefreshToken(): string | null {
     return this.getStoredTokens()?.refreshToken ?? null;
