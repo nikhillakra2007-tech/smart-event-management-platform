@@ -38,7 +38,7 @@ const DEMO_USERS: Record<string, AuthUser> = {
 interface StoredTokens {
   accessToken: string;
   refreshToken: string;
-  user: AuthUser;
+  user: AuthUser | null;
 }
 
 export const authApi = {
@@ -104,7 +104,10 @@ export const authApi = {
     }
   },
 
-  /** Refresh access token using refresh token */
+  /** Refresh access token using refresh token. Never re-entrant: the API
+   * client does not attempt refreshes for /auth/* endpoints, so a 401 from
+   * /auth/refresh lands in the catch below, clears the session, and returns
+   * null instead of looping. */
   async refresh(): Promise<TokenResponse | null> {
     const tokens = this.getStoredTokens();
     if (!tokens?.refreshToken) return null;
@@ -114,8 +117,8 @@ export const authApi = {
         method: 'POST',
         body: JSON.stringify({ refresh_token: tokens.refreshToken }),
       });
-      
-      this.storeTokens(response.access_token, response.refresh_token, tokens.user);
+
+      this.storeTokens(response.access_token, response.refresh_token, tokens.user ?? undefined);
       return response;
     } catch {
       this.clearTokens();
@@ -160,15 +163,14 @@ export const authApi = {
     }
   },
 
-  /** Store tokens in localStorage */
-  storeTokens(accessToken: string, refreshToken: string, user?: AuthUser): void {
+  /** Store tokens in localStorage. When no user is supplied the previously
+   * stored user is kept; a phantom blank user is never written, so a session
+   * can never end up authenticated as a nameless placeholder. */
+  storeTokens(accessToken: string, refreshToken: string, user?: AuthUser | null): void {
     const stored: StoredTokens = {
       accessToken,
       refreshToken,
-      user: user || { 
-        id: '', name: '', email: '', role: 'participant', 
-        avatar_url: null, created_at: '', updated_at: '' 
-      },
+      user: user ?? this.getStoredUser(),
     };
     localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(stored));
   },
@@ -198,8 +200,10 @@ export const authApi = {
     return this.getStoredTokens()?.refreshToken ?? null;
   },
 
-  /** Get stored user */
+  /** Get stored user. A stored entry without a real id and email is not a
+   * user - it is treated as absent so the session re-authenticates. */
   getStoredUser(): AuthUser | null {
-    return this.getStoredTokens()?.user ?? null;
+    const user = this.getStoredTokens()?.user;
+    return user && user.id && user.email ? user : null;
   },
 };
