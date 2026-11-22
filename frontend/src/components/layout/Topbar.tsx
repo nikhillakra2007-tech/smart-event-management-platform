@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useEvent } from '../../context/EventContext';
 import { useAuth } from '../../context/AuthContext';
+import { authApi } from '../../api/auth';
 import { 
   ShieldCheck, 
   Users, 
@@ -152,6 +153,16 @@ export const Topbar: React.FC<TopbarProps> = ({
           <currentConfig.icon className={`w-4 h-4 ${currentConfig.color.replace('bg-indigo-950/80 border-indigo-700/60 text-indigo-300', 'text-indigo-400').replace('bg-cyan-950/80 border-cyan-700/60 text-cyan-300', 'text-cyan-400').replace('bg-amber-950/80 border-amber-700/60 text-amber-300', 'text-amber-400')}`} />
           <span className="text-xs font-semibold">{currentConfig.label}</span>
         </div>
+
+        {/* Demo Session Badge: offline demo-persona login, nothing is saved */}
+        {authApi.isDemoSession() && (
+          <span
+            title="Signed in as an offline demo persona. Actions are not saved to the backend."
+            className="hidden sm:inline-flex items-center px-2 py-1 rounded-lg border border-amber-500/40 bg-amber-500/10 text-amber-300 text-[10px] font-bold uppercase tracking-wider"
+          >
+            Demo session
+          </span>
+        )}
 
         {/* Active User Dropdown */}
         <div className="relative">

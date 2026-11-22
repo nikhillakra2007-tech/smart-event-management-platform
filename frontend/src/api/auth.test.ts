@@ -94,3 +94,25 @@ describe('authApi session robustness', () => {
     expect(authApi.getAccessToken()).toBe('c');
   });
 });
+
+describe('authApi.isDemoSession', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('is false without a session and true for an offline demo session', () => {
+    expect(authApi.isDemoSession()).toBe(false);
+    authApi.storeTokens('demo-token-organizer-123', 'demo-token-organizer-123', {
+      id: 'u-1',
+      name: 'Alex Rivera',
+      email: 'alex.rivera@techhive.com',
+      role: 'organizer',
+      avatar_url: null,
+      created_at: '',
+      updated_at: '',
+    });
+    expect(authApi.isDemoSession()).toBe(true);
+    authApi.storeTokens('real-jwt', 'real-refresh');
+    expect(authApi.isDemoSession()).toBe(false);
+  });
+});
