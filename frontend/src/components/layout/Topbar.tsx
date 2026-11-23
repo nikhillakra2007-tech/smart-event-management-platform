@@ -36,6 +36,13 @@ export const Topbar: React.FC<TopbarProps> = ({
   const [isEventDropdownOpen, setIsEventDropdownOpen] = useState(false);
   const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
 
+  // Accounts can legitimately have no display name; fall back to the email
+  // instead of a meaningless placeholder like "User".
+  const hasName = Boolean(user?.name?.trim());
+  const displayName = hasName ? user!.name : user?.email || 'Account';
+  const displayInitial = displayName.charAt(0).toUpperCase();
+  const displaySecondary = hasName ? user?.email || '' : null;
+
   const handleSwitchPersona = async (email: string, targetPath: string) => {
     setIsUserDropdownOpen(false);
     try {
@@ -171,14 +178,14 @@ export const Topbar: React.FC<TopbarProps> = ({
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl bg-surface-lighter/60 border border-surface-border hover:border-slate-600 transition-colors"
           >
             <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
-              {user?.name ? user.name.charAt(0) : 'U'}
+              {displayInitial}
             </div>
             <div className="hidden xl:block text-left">
               <span className="text-xs font-semibold text-slate-200 block truncate max-w-[120px]">
-                {user?.name || 'User'}
+                {displayName}
               </span>
               <span className="text-[10px] text-slate-400 block truncate max-w-[120px]">
-                {user?.email || ''}
+                {displaySecondary ?? ''}
               </span>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
@@ -194,14 +201,14 @@ export const Topbar: React.FC<TopbarProps> = ({
                 <div className="px-2.5 py-2 border-b border-surface-border mb-1">
                   <div className="flex items-center gap-2">
                     <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center text-white font-bold text-xs">
-                      {user?.name ? user.name.charAt(0) : 'U'}
+                      {displayInitial}
                     </div>
                     <div>
                       <span className="text-xs font-semibold text-slate-200 block truncate">
-                        {user?.name || 'User'}
+                        {displayName}
                       </span>
                       <span className="text-[10px] text-slate-400 block truncate">
-                        {user?.email || ''}
+                        {displaySecondary ?? ''}
                       </span>
                     </div>
                   </div>
