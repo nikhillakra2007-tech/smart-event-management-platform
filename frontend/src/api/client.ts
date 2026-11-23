@@ -47,6 +47,13 @@ const responseCache = new Map<string, { timestamp: number; data: any }>();
 const inFlightRequests = new Map<string, Promise<any>>();
 const CACHE_TTL_MS = 2500; // 2.5s cache for identical GET requests
 
+// First GET attempt stays fast; a cold-starting API (Render free tier can
+// take ~45s to wake) gets one patient retry before sample data is served.
+// Writes are never retried (they are not idempotent), but they get a patient
+// timeout so a cold start does not silently lose the user's action.
+const GET_FAST_TIMEOUT_MS = 3500;
+const PATIENT_TIMEOUT_MS = 30000;
+
 export function clearApiCache(endpointPrefix?: string) {
   if (!endpointPrefix) {
     responseCache.clear();
@@ -256,13 +263,26 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       ...(options.headers || {}),
     };
 
-    // 3500ms strict timeout for lightning fast responses
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3500);
+    const doFetch = async (timeoutMs: number): Promise<Response> => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        return await fetch(url, { ...options, headers, signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    };
 
     try {
-      const response = await fetch(url, { ...options, headers, signal: controller.signal });
-      clearTimeout(timeoutId);
+      let response: Response;
+      try {
+        response = await doFetch(method === 'GET' ? GET_FAST_TIMEOUT_MS : PATIENT_TIMEOUT_MS);
+      } catch (firstErr) {
+        // GETs are idempotent: retry once patiently. Writes fall through to
+        // the catch below with a clear not-saved error.
+        if (method !== 'GET') throw firstErr;
+        response = await doFetch(PATIENT_TIMEOUT_MS);
+      }
       
       // Handle 401 - token expired or invalid.
       // Never attempt a token refresh for auth endpoints themselves: a 401
@@ -311,20 +331,25 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       }
       return data;
     } catch (err: any) {
-      clearTimeout(timeoutId);
-      
-      // Check for graceful fallback on network / timeout / cold start.
+      // Graceful fallback on network / timeout / cold start, GETs only.
+      // A failed write must never return sample data as if it were saved.
       // Serving sample data is never silent: the UI labels it via demoMode.
-      const fallback = getMockFallback<T>(endpoint);
-      if (fallback !== null) {
-        markMockDataServed(endpoint);
-        if (method === 'GET') {
+      if (method === 'GET') {
+        const fallback = getMockFallback<T>(endpoint);
+        if (fallback !== null) {
+          markMockDataServed(endpoint);
           responseCache.set(cacheKey, { timestamp: Date.now(), data: fallback });
+          return fallback;
         }
-        return fallback;
       }
 
       if (err instanceof ApiError) throw err;
+      if (method !== 'GET') {
+        throw new ApiError(
+          'The server could not be reached, so your change was not saved. It may be waking up from idle (this can take up to a minute). Please try again in a moment.',
+          0
+        );
+      }
       throw new ApiError(err.message || 'Network connection failed', 0);
     } finally {
       if (method === 'GET') {
