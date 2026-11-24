@@ -17,14 +17,24 @@ import {
   Megaphone,
   Award,
   ArrowUpRight,
-  Sparkles,
-  Radio,
-  CheckCircle2,
-  Clock,
-  ExternalLink,
   PlusCircle,
   CalendarDays,
+  Clock,
+  MapPin,
+  BarChart3,
 } from 'lucide-react';
+import {
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Cell,
+} from 'recharts';
 import { Link } from 'react-router-dom';
 import { CreateEventModal } from '../../components/organizer/CreateEventModal';
 
@@ -79,21 +89,60 @@ export const OrganizerDashboard: React.FC = () => {
       ? Math.round((analytics.evaluated_submissions / analytics.submissions_count) * 100)
       : 0;
 
+  const attendanceData = analytics?.attendance_over_time || [];
+  const scoreData = analytics?.score_distribution || [];
+
+  const formatEventDate = (iso: string | null | undefined) =>
+    iso
+      ? new Date(iso).toLocaleDateString([], { month: 'short', day: 'numeric' })
+      : null;
+  const eventDateRange =
+    currentEvent && formatEventDate(currentEvent.start_time)
+      ? `${formatEventDate(currentEvent.start_time)}${
+          formatEventDate(currentEvent.end_time) &&
+          formatEventDate(currentEvent.end_time) !== formatEventDate(currentEvent.start_time)
+            ? ` - ${formatEventDate(currentEvent.end_time)}`
+            : ''
+        }`
+      : null;
+
+  const eventStatusVariant =
+    currentEvent?.status === 'active'
+      ? 'success'
+      : currentEvent?.status === 'completed'
+      ? 'purple'
+      : 'warning';
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-surface-border">
         <div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <h1 className="text-xl sm:text-2xl font-black text-white tracking-tight">
               Event Command Center
             </h1>
-            <Badge variant="success" size="sm" dot>
-              Live
-            </Badge>
+            {currentEvent?.status && (
+              <Badge variant={eventStatusVariant} size="sm" dot>
+                {currentEvent.status}
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-slate-400 mt-1">
-            Real-time event overview for <span className="text-indigo-300 font-semibold">{currentEvent?.name}</span> • 
+            Real-time event overview for <span className="text-indigo-300 font-semibold">{currentEvent?.name}</span>
+            {eventDateRange && (
+              <span className="inline-flex items-center gap-1 ml-2">
+                <CalendarDays className="w-3 h-3 text-slate-500" />
+                {eventDateRange}
+              </span>
+            )}
+            {currentEvent?.venue && (
+              <span className="inline-flex items-center gap-1 ml-2">
+                <MapPin className="w-3 h-3 text-slate-500" />
+                {currentEvent.venue}
+              </span>
+            )}
+            {' • '}
             Last updated <span className="font-mono text-slate-300">{lastUpdated.toLocaleTimeString()}</span>
           </p>
         </div>
@@ -135,7 +184,7 @@ export const OrganizerDashboard: React.FC = () => {
         <StatCard
           title="Total Registrations"
           value={analytics?.total_registrations ?? 0}
-          subtitle="40 active hackathon participants"
+          subtitle={`Registered for ${currentEvent?.name ?? 'this event'}`}
           icon={<Users className="w-5 h-5" />}
           accentColor="indigo"
         />
@@ -195,6 +244,99 @@ export const OrganizerDashboard: React.FC = () => {
               showPodium={false}
             />
           </Card>
+
+          {/* Attendance Curve & Score Distribution Charts */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-emerald-400" />
+                  <span>Check-in Curve</span>
+                </h3>
+                <span className="text-[10px] font-mono text-slate-500">Hourly</span>
+              </div>
+              <div className="h-44 w-full">
+                {attendanceData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={attendanceData}>
+                      <defs>
+                        <linearGradient id="dashAttendance" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis dataKey="hour" stroke="#64748b" fontSize={10} />
+                      <YAxis stroke="#64748b" fontSize={10} allowDecimals={false} width={24} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#0f172a',
+                          borderColor: '#334155',
+                          borderRadius: '8px',
+                          color: '#f8fafc',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="count"
+                        stroke="#10b981"
+                        strokeWidth={2}
+                        fill="url(#dashAttendance)"
+                        name="Check-ins"
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-xs text-slate-500">
+                    No check-in telemetry yet
+                  </div>
+                )}
+              </div>
+            </Card>
+
+            <Card className="p-5 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-violet-400" />
+                  <span>Score Distribution</span>
+                </h3>
+                <span className="text-[10px] font-mono text-slate-500">Judging</span>
+              </div>
+              <div className="h-44 w-full">
+                {scoreData.length > 0 ? (
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={scoreData}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                      <XAxis dataKey="range" stroke="#64748b" fontSize={10} />
+                      <YAxis stroke="#64748b" fontSize={10} allowDecimals={false} width={24} />
+                      <Tooltip
+                        contentStyle={{
+                          backgroundColor: '#0f172a',
+                          borderColor: '#334155',
+                          borderRadius: '8px',
+                          color: '#f8fafc',
+                          fontSize: '12px',
+                        }}
+                      />
+                      <Bar dataKey="count" name="Submissions" radius={[4, 4, 0, 0]}>
+                        {scoreData.map((entry, index) => (
+                          <Cell
+                            key={entry.range}
+                            fill={['#6366f1', '#8b5cf6', '#a855f7', '#d946ef'][index % 4]}
+                          />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                ) : (
+                  <div className="h-full flex items-center justify-center text-xs text-slate-500">
+                    No evaluations scored yet
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
 
           {/* Attendance Breakdown Bar */}
           <Card className="p-5 space-y-3">
