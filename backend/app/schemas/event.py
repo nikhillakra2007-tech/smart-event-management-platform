@@ -26,3 +26,14 @@ class EventResponse(EventBase):
     id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+
+
+class EventUpdate(BaseModel):
+    """Partial update; only provided fields are changed."""
+
+    name: str | None = None
+    description: str | None = None
+    venue: str | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    status: Literal["draft", "active", "completed", "cancelled"] | None = None

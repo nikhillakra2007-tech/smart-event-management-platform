@@ -33,6 +33,9 @@ const LiveLeaderboardPage = lazy(() =>
 const AnalyticsDashboard = lazy(() =>
   import('./pages/organizer/AnalyticsDashboard').then((m) => ({ default: m.AnalyticsDashboard }))
 );
+const EventsManager = lazy(() =>
+  import('./pages/organizer/EventsManager').then((m) => ({ default: m.EventsManager }))
+);
 
 // Code-split Lazy Loaded Participant Pages
 const ParticipantHub = lazy(() =>
@@ -96,6 +99,7 @@ export const App: React.FC = () => {
                 {/* Organizer Routes */}
                 <Route element={<OrganizerRoute />}>
                   <Route path="/organizer" element={<OrganizerDashboard />} />
+                  <Route path="/organizer/events" element={<EventsManager />} />
                   <Route path="/organizer/planner" element={<EventPlanner />} />
                   <Route path="/organizer/checkins" element={<CheckinManager />} />
                   <Route path="/organizer/teams" element={<TeamsSubmissions />} />

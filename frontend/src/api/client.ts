@@ -375,6 +375,11 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
+  updateEvent: (eventId: string, payload: Partial<Pick<EventItem, 'name' | 'description' | 'venue' | 'start_time' | 'end_time' | 'status'>>) =>
+    request<EventItem>(`/events/${eventId}`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
 
   // --- Users ---
   getUsers: (role?: 'organizer' | 'participant' | 'judge') => 
